@@ -26,6 +26,7 @@ playbooks/<scenario>/README.md      # step-by-step investigation guide
 playbooks/<scenario>/queries/*.kql  # one query per step, numbered in order
 detections/*.kql                    # proactive hunts / custom detection candidates
 templates/playbook-template.md      # starting point for new playbooks
+templates/*-email.md                # client/stakeholder email templates
 ```
 
 ## How to use
@@ -37,6 +38,7 @@ templates/playbook-template.md      # starting point for new playbooks
 
 ## Changelog
 
+- **2026-11-09**: Added travel confirmation email template and a field note on reading the alert activity log.
 - **2026-11-09**: Impossible travel playbook: added 04d home device activity, plus field notes on out-of-office, travel routes and eSIMs.
 - **2026-11-09**: Impossible travel playbook: added 04b session timeline, 04c IP enrichment, 05b identity change details, and field notes (broker tokens, CA notApplied, Update user bursts).
 - **2026-11-09**: Initial release: impossible travel detection and account compromise playbook.
