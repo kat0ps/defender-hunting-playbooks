@@ -1,0 +1,12 @@
+// Step 0 (optional): list travel alerts Defender has already raised in the last 30 days
+AlertInfo
+| where Timestamp > ago(30d)
+| where Title has_any ("travel", "Atypical")
+| join kind=inner (
+    AlertEvidence
+    | where EntityType == "User"
+    | project AlertId, AccountUpn, AccountObjectId
+  ) on AlertId
+| summarize arg_max(Timestamp, *) by AlertId
+| project Timestamp, AlertId, Title, Severity, ServiceSource, DetectionSource, AccountUpn
+| sort by Timestamp desc

@@ -1,0 +1,10 @@
+// Step 7: did the account send phishing or BEC email after the suspicious sign-in?
+// Look for bursts of email, many recipients, or payment- or invoice-themed subjects
+let user = "user@domain.com";
+let alertTime = datetime(2026-11-09 08:00:00);
+EmailEvents
+| where Timestamp between ((alertTime - 1d) .. now())
+| where SenderFromAddress =~ user
+| summarize Emails = count(), Recipients = dcount(RecipientEmailAddress),
+            Subjects = make_set(Subject, 20) by EmailDirection, SenderIPv4, bin(Timestamp, 1h)
+| sort by Timestamp asc

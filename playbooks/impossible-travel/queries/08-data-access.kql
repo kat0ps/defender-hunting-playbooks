@@ -1,0 +1,14 @@
+// Step 8: data access (SharePoint/OneDrive downloads and sharing)
+// Look for bulk downloads or anonymous links created from the suspicious IP
+let user = "user@domain.com";
+let badIP = "x.x.x.x";
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp > ago(14d)
+| where AccountObjectId == userId or IPAddress == badIP
+| where ActionType in ("FileDownloaded", "FileSyncDownloadedFull", "FileAccessed",
+                       "AnonymousLinkCreated", "SharingInvitationCreated", "AddedToSecureLink",
+                       "CompanyLinkCreated", "SharingSet")
+| summarize Files = dcount(ObjectName), Actions = count(), Sample = make_set(ObjectName, 20)
+            by ActionType, IPAddress, CountryCode, bin(Timestamp, 1h)
+| sort by Timestamp asc

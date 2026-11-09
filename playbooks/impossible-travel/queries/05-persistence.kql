@@ -1,0 +1,12 @@
+// Step 5: persistence (MFA methods, device registration, app consents, password changes)
+// Pay close attention to new MFA methods or device registrations made from the suspicious IP
+let user = "user@domain.com";
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp > ago(14d)
+| where AccountObjectId == userId or RawEventData has user
+| where ActionType has_any ("security info", "StrongAuthentication", "Register device",
+        "Add device", "registered owner", "Consent to application", "app role assignment",
+        "service principal", "Change user password", "Reset user password", "Update user")
+| project Timestamp, ActionType, Application, IPAddress, CountryCode, ISP, UserAgent, RawEventData
+| sort by Timestamp asc

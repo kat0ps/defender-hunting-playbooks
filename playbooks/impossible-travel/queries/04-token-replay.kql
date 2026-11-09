@@ -1,0 +1,9 @@
+// Step 4: possible token theft or replay (one SessionId used from several IPs or countries)
+// A hit strongly suggests cookie or token theft (e.g. AiTM phishing). A password reset alone will NOT remove the attacker: revoke sessions.
+let user = "user@domain.com";
+EntraIdSignInEvents
+| where Timestamp > ago(7d) and AccountUpn =~ user and isnotempty(SessionId)
+| summarize IPs = make_set(IPAddress), Countries = make_set(Country),
+            Devices = make_set(DeviceName), First = min(Timestamp), Last = max(Timestamp)
+            by SessionId
+| where array_length(Countries) > 1 or array_length(IPs) > 2

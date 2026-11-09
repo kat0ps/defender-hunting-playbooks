@@ -1,0 +1,8 @@
+// Step 9: blast radius (which other accounts used the same suspicious IPs?)
+let badIPs = dynamic(["x.x.x.x"]);
+EntraIdSignInEvents
+| where Timestamp > ago(30d) and IPAddress in (badIPs)
+| summarize Users = make_set(AccountUpn), UserCount = dcount(AccountUpn),
+            Successes = countif(ErrorCode == 0), Failures = countif(ErrorCode != 0)
+            by IPAddress, Country
+| sort by UserCount desc

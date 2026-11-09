@@ -1,0 +1,7 @@
+// Step 1: alert scope (who, which IPs, when)
+let alertId = "<AlertId>";
+AlertInfo
+| where AlertId == alertId
+| join kind=inner AlertEvidence on AlertId
+| project Timestamp, Title, Severity, ServiceSource, EntityType, EvidenceRole,
+          AccountUpn, AccountObjectId, RemoteIP, DeviceName, AdditionalFields

@@ -1,0 +1,13 @@
+// Step 2: new IPs and locations compared with the user's 30-day baseline
+// Look at rows where NewNearAlert == true, especially with a new device, user agent, or IsManaged == false
+let user = "user@domain.com";
+let alertTime = datetime(2026-11-09 08:00:00);
+EntraIdSignInEvents
+| where Timestamp > ago(30d) and AccountUpn =~ user
+| summarize FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            Successes = countif(ErrorCode == 0), Failures = countif(ErrorCode != 0),
+            Apps = make_set(Application, 10), Devices = make_set(DeviceName, 5),
+            UserAgents = make_set(UserAgent, 5), Managed = make_set(IsManaged)
+            by IPAddress, Country, City
+| extend NewNearAlert = FirstSeen between ((alertTime - 2d) .. (alertTime + 2d))
+| sort by FirstSeen desc

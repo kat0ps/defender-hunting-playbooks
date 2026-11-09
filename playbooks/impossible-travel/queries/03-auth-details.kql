@@ -1,0 +1,19 @@
+// Step 3: how did the suspicious sign-in authenticate? (alert time +/- 24h)
+// Red flags: many "Bad password" then success (spray), repeated "MFA failed/denied" (MFA fatigue),
+// singleFactorAuthentication on the far sign-in, legacy ClientAppUsed (IMAP/POP/SMTP)
+let user = "user@domain.com";
+let alertTime = datetime(2026-11-09 08:00:00);
+EntraIdSignInEvents
+| where AccountUpn =~ user
+| where Timestamp between ((alertTime - 1d) .. (alertTime + 1d))
+| extend Result = case(ErrorCode == 0, "Success",
+                       ErrorCode == 50126, "Bad password",
+                       ErrorCode in (50074, 50076), "MFA required",
+                       ErrorCode == 500121, "MFA failed/denied",
+                       ErrorCode == 50053, "Locked out",
+                       ErrorCode == 53003, "Blocked by CA",
+                       strcat("Error ", ErrorCode))
+| project Timestamp, Result, IPAddress, Country, City, Application, ClientAppUsed,
+          LogonType, AuthenticationRequirement, ConditionalAccessStatus,
+          RiskLevelDuringSignIn, DeviceName, IsManaged, UserAgent, SessionId
+| sort by Timestamp asc
