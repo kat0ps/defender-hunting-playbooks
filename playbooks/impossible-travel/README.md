@@ -28,7 +28,10 @@ Gather these values (step 1 gives you most of them) and fill them into the `let`
 | 2 | Baseline vs new IPs | [02-baseline-new-ips.kql](queries/02-baseline-new-ips.kql) | IPs, countries or user agents first seen around the alert (`NewNearAlert = true`), unmanaged devices |
 | 3 | Authentication details | [03-auth-details.kql](queries/03-auth-details.kql) | Password spray (many bad passwords, then success), MFA fatigue (repeated denials), single-factor auth, legacy protocols |
 | 4 | Token replay | [04-token-replay.kql](queries/04-token-replay.kql) | One `SessionId` used from several countries or IPs, which suggests cookie or token theft (AiTM) |
+| 4b | Session timeline | [04b-session-timeline.kql](queries/04b-session-timeline.kql) | For a multi-country SessionId: do countries alternate within the same hour with the same UserAgent (one device on VPN), or appear in separate bursts (replay)? |
+| 4c | IP enrichment | [04c-ip-enrichment.kql](queries/04c-ip-enrichment.kql) | ISP and category of suspicious IPs: hosting/VPN/anonymizer vs mobile carrier |
 | 5 | Persistence | [05-persistence.kql](queries/05-persistence.kql) | New MFA methods, device registrations, OAuth consents, password changes from the suspicious IP |
+| 5b | Identity change details | [05b-identity-change-details.kql](queries/05b-identity-change-details.kql) | What each "Update user." changed (MFA methods, device keys), who made the change, and from which IP |
 | 6 | Mailbox abuse | [06-mailbox-abuse.kql](queries/06-mailbox-abuse.kql) | Inbox rules that forward, delete, mark as read or move mail to RSS Feeds/Archive; mailbox forwarding; delegation |
 | 7 | Outbound email | [07-outbound-email.kql](queries/07-outbound-email.kql) | Bursts of internal or external phishing, BEC-style subjects |
 | 8 | Data access | [08-data-access.kql](queries/08-data-access.kql) | Bulk downloads, anonymous or external sharing links |
@@ -42,6 +45,14 @@ Gather these values (step 1 gives you most of them) and fill them into the `let`
 - **Mobile carrier IPs** that geolocate to the carrier's hub city rather than where the user is.
 - **The same device and session on both sides** (`SameDevice` / `SameSession` = true). This is almost always network routing, not two people.
 - **Travelling users.** Check with the user or their manager through a channel other than the possibly compromised mailbox.
+
+## Field notes
+
+- **Non-interactive sign-ins through Microsoft Authentication Broker** (Android/iOS) are token refreshes. They inherit the MFA claim from the original sign-in, so `multiFactorAuthentication` there does **not** prove the person in the foreign country passed MFA.
+- **Empty `AadDeviceId` with `IsManaged = 0`** means the device isn't registered or managed. Compare against the user's known devices in step 4.
+- **`ConditionalAccessStatus = 2`** means *notApplied*: no CA policy evaluated the sign-in. This is a coverage gap worth raising even if the case turns out benign.
+- **A password change followed by a burst of `Update user.` events** often means MFA re-registration or new phone setup. Run step 5b to see the actor and IP before deciding whether it was legitimate (helpdesk or the user) or attacker persistence.
+- **`Update user.` with a non-browser UserAgent** (e.g. `Apache-HttpClient`) right after an alert may be automation (MDCA governance, SOAR, sync), or it may be an attacker tool. Check the actor in step 5b.
 
 ## Verdict
 

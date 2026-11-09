@@ -1,0 +1,12 @@
+// Step 4b: hour-by-hour timeline of a suspicious SessionId found in step 4
+// Benign (VPN or Wi-Fi/cellular switching on ONE device): countries alternate within the same hour, same UserAgent throughout
+// Token replay: foreign countries appear in separate bursts, often with a different UserAgent/app, while the user's
+//               known device is active in the home country at the same time
+let user = "user@domain.com";
+let sessionId = "<SessionId>";
+EntraIdSignInEvents
+| where Timestamp > ago(30d) and AccountUpn =~ user and SessionId == sessionId
+| summarize SignIns = count(), IPs = make_set(IPAddress, 10), UserAgents = make_set(UserAgent, 5),
+            Apps = make_set(Application, 10), LogonTypes = make_set(LogonType), DeviceIds = make_set(AadDeviceId, 3)
+            by bin(Timestamp, 1h), Country
+| sort by Timestamp asc

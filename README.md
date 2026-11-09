@@ -37,4 +37,5 @@ templates/playbook-template.md      # starting point for new playbooks
 
 ## Changelog
 
+- **2026-11-09**: Impossible travel playbook: added 04b session timeline, 04c IP enrichment, 05b identity change details, and field notes (broker tokens, CA notApplied, Update user bursts).
 - **2026-11-09**: Initial release: impossible travel detection and account compromise playbook.

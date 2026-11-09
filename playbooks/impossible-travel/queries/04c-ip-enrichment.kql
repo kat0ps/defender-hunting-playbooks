@@ -1,0 +1,10 @@
+// Step 4c: ISP and category of the suspicious IPs
+// Hosting/VPN/anonymizer providers suggest a VPN app or attacker infrastructure; mobile carriers suggest roaming or a real phone
+// Also check the IPs in Defender's IP page / threat intel for reputation
+let ips = dynamic(["x.x.x.x", "y.y.y.y"]);
+CloudAppEvents
+| where Timestamp > ago(30d) and IPAddress in (ips)
+| summarize Events = count(), Users = dcount(AccountObjectId),
+            ISP = make_set(ISP, 3), Category = make_set(IPCategory, 3), Tags = make_set(tostring(IPTags), 5),
+            Country = make_set(CountryCode, 3), City = make_set(City, 3)
+            by IPAddress

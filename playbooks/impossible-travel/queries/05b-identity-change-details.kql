@@ -1,0 +1,21 @@
+// Step 5b: what actually changed in the "Update user." / password events from step 5, who did it, and from where
+// Key properties: StrongAuthenticationMethod / StrongAuthenticationPhoneAppDetail / StrongAuthenticationUserDetails = MFA changes
+//                 SearchableDeviceKey / Device = device or Authenticator registration
+// Actor = the user themselves, an admin/helpdesk account, or a service (e.g. sync or automation)
+let user = "user@domain.com";
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp > ago(30d)
+| where AccountObjectId == userId or RawEventData has user
+| where ActionType in ("Update user.", "Change user password.", "Reset user password.",
+                       "Register device.", "Add device.", "Add registered owner to device.",
+                       "Add registered users to device.", "User registered security info.",
+                       "User deleted security info.", "User changed default security info.")
+| extend Raw = parse_json(RawEventData)
+| extend Actor = tostring(Raw.UserId),
+         ActorIP = coalesce(tostring(Raw.ActorIpAddress), tostring(Raw.ClientIP), IPAddress),
+         Target = tostring(Raw.ObjectId),
+         ChangedProperties = extract_all(@'"Name":"([^"]+)"', tostring(Raw.ModifiedProperties))
+| project Timestamp, ActionType, Actor, ActorIP, Target, ChangedProperties, UserAgent,
+          ModifiedProperties = Raw.ModifiedProperties
+| sort by Timestamp asc
