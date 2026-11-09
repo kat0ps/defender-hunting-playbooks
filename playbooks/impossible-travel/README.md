@@ -52,6 +52,7 @@ Gather these values (step 1 gives you most of them) and fill them into the `let`
 - **Empty `AadDeviceId` with `IsManaged = 0`** means the device isn't registered or managed. Compare against the user's known devices in step 4.
 - **`ConditionalAccessStatus = 2`** means *notApplied*: no CA policy evaluated the sign-in. This is a coverage gap worth raising even if the case turns out benign.
 - **A password change followed by a burst of `Update user.` events** often means MFA re-registration or new phone setup. Run step 5b to see the actor and IP before deciding whether it was legitimate (helpdesk or the user) or attacker persistence.
+- **Foreign IPs not tagged as VPN/hosting** weaken the "user runs a VPN app" explanation, because consumer VPNs exit through hosting ranges. Untagged foreign IPs may be the user's real location or an attacker's **residential proxy**; the user's known device being active at home at the same time points to the proxy.
 - **`Update user.` with a non-browser UserAgent** (e.g. `Apache-HttpClient`) right after an alert may be automation (MDCA governance, SOAR, sync), or it may be an attacker tool. Check the actor in step 5b.
 
 ## Verdict
