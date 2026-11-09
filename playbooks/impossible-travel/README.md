@@ -30,6 +30,7 @@ Gather these values (step 1 gives you most of them) and fill them into the `let`
 | 4 | Token replay | [04-token-replay.kql](queries/04-token-replay.kql) | One `SessionId` used from several countries or IPs, which suggests cookie or token theft (AiTM) |
 | 4b | Session timeline | [04b-session-timeline.kql](queries/04b-session-timeline.kql) | For a multi-country SessionId: do countries alternate within the same hour with the same UserAgent (one device on VPN), or appear in separate bursts (replay)? |
 | 4c | IP enrichment | [04c-ip-enrichment.kql](queries/04c-ip-enrichment.kql) | ISP and category of suspicious IPs: hosting/VPN/anonymizer vs mobile carrier |
+| 4d | Home device activity | [04d-home-device-activity.kql](queries/04d-home-device-activity.kql) | Was the user's known device used interactively at home while the foreign session was active, or only refreshing tokens in the background? |
 | 5 | Persistence | [05-persistence.kql](queries/05-persistence.kql) | New MFA methods, device registrations, OAuth consents, password changes from the suspicious IP |
 | 5b | Identity change details | [05b-identity-change-details.kql](queries/05b-identity-change-details.kql) | What each "Update user." changed (MFA methods, device keys), who made the change, and from which IP |
 | 6 | Mailbox abuse | [06-mailbox-abuse.kql](queries/06-mailbox-abuse.kql) | Inbox rules that forward, delete, mark as read or move mail to RSS Feeds/Archive; mailbox forwarding; delegation |
@@ -53,6 +54,9 @@ Gather these values (step 1 gives you most of them) and fill them into the `let`
 - **`ConditionalAccessStatus = 2`** means *notApplied*: no CA policy evaluated the sign-in. This is a coverage gap worth raising even if the case turns out benign.
 - **A password change followed by a burst of `Update user.` events** often means MFA re-registration or new phone setup. Run step 5b to see the actor and IP before deciding whether it was legitimate (helpdesk or the user) or attacker persistence.
 - **Foreign IPs not tagged as VPN/hosting** weaken the "user runs a VPN app" explanation, because consumer VPNs exit through hosting ranges. Untagged foreign IPs may be the user's real location or an attacker's **residential proxy**; the user's known device being active at home at the same time points to the proxy.
+- **"Automatic reply" emails in step 7** mean the user's out-of-office is on. Ask whether they are on leave or travelling before escalating.
+- **The geography can tell a travel story.** Look at the order of locations against real routes (e.g. a stop near a hub airport, then the destination). A home-country IP alongside a transit-country IP for days can come from a **travel eSIM or roaming SIM**, whose traffic exits in another country, while hotel Wi-Fi gives destination IPs.
+- **A clean steps 5–8 (no rules, forwarding, data access or phishing) plus 0 failures** count against compromise. Attackers holding a token usually act on it within hours.
 - **`Update user.` with a non-browser UserAgent** (e.g. `Apache-HttpClient`) right after an alert may be automation (MDCA governance, SOAR, sync), or it may be an attacker tool. Check the actor in step 5b.
 
 ## Verdict

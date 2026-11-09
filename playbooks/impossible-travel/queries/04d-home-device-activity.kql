@@ -1,0 +1,12 @@
+// Step 4d: was the user's known home-country device actually USED while the foreign session was active?
+// Only nonInteractiveUser rows = background token refreshes from a device left powered on (fits "user is travelling")
+// interactiveUser rows at home during the foreign activity = someone is really there, so the foreign session is likely not the user
+let user = "user@domain.com";
+let windowStart = datetime(2026-11-07 00:00:00);
+EntraIdSignInEvents
+| where Timestamp between (windowStart .. now())
+| where AccountUpn =~ user
+| extend LogonType = tostring(LogonType)
+| summarize SignIns = count(), IPs = make_set(IPAddress, 10), Apps = make_set(Application, 10)
+            by bin(Timestamp, 1h), Country, DeviceName, LogonType
+| sort by Timestamp asc
