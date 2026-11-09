@@ -69,8 +69,3 @@ Work through these in order:
 7. [ ] **Investigate every other account** found in step 9, and notify recipients of any phishing from step 7.
 8. [ ] **Document the findings**: timeline, IOCs, root cause (e.g. AiTM phishing, password spray).
 
-## IOC log
-
-| Date | Case/Alert ID | Type | Value | Notes |
-|---|---|---|---|---|
-| | | | | |
