@@ -1,0 +1,17 @@
+// Step 5: was the attachment saved or executed on any endpoint?
+// Fill in the hash and/or file name from step 2
+let lookback = 30d;
+let fileHash = "";
+let fileName = "";
+union
+( DeviceFileEvents
+  | where Timestamp > ago(lookback)
+  | where (isnotempty(fileHash) and SHA256 =~ fileHash) or (isnotempty(fileName) and FileName =~ fileName)
+  | project Timestamp, Source = "File", DeviceName, Account = InitiatingProcessAccountName, ActionType,
+            FileName, FolderPath, Process = InitiatingProcessFileName, CommandLine = InitiatingProcessCommandLine ),
+( DeviceProcessEvents
+  | where Timestamp > ago(lookback)
+  | where (isnotempty(fileHash) and SHA256 =~ fileHash) or (isnotempty(fileName) and ProcessCommandLine has fileName)
+  | project Timestamp, Source = "Process", DeviceName, Account = AccountName, ActionType,
+            FileName, FolderPath, Process = InitiatingProcessFileName, CommandLine = ProcessCommandLine )
+| sort by Timestamp asc

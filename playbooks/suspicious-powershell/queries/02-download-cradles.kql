@@ -1,0 +1,15 @@
+// Step 2: PowerShell download cradles (download + execute)
+// Sorted rarest first: commands on 1-2 devices are more interesting than IT scripts running everywhere
+let lookback = 7d;
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ ("powershell.exe", "pwsh.exe")
+| where ProcessCommandLine has_any ("DownloadString", "DownloadFile", "DownloadData", "Net.WebClient",
+                                    "Invoke-WebRequest", "iwr", "Invoke-RestMethod", "irm",
+                                    "Start-BitsTransfer", "WebRequest]::Create")
+| where ProcessCommandLine has_any ("IEX", "Invoke-Expression", "http")
+| summarize Executions = count(), Devices = dcount(DeviceName), DeviceList = make_set(DeviceName, 20),
+            Accounts = make_set(AccountName, 10), Parents = make_set(InitiatingProcessFileName, 10),
+            First = min(Timestamp), Last = max(Timestamp)
+            by ProcessCommandLine
+| sort by Devices asc, First desc

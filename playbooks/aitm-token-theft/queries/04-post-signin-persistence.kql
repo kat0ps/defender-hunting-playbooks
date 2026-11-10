@@ -1,0 +1,23 @@
+// Step 4: persistence actions within 6 hours of a user's first sign-in from a never-before-seen IP
+// AiTM operators typically register MFA/devices or create inbox rules quickly after replaying the cookie
+// Large tenants: narrow with "| where AccountUpn in~ (...)" inside newIpSignins
+let lookback = 7d;
+let window = 6h;
+let baseline = EntraIdSignInEvents
+    | where Timestamp between (ago(30d) .. ago(lookback)) and ErrorCode == 0
+    | distinct AccountObjectId, IPAddress;
+let newIpSignins = EntraIdSignInEvents
+    | where Timestamp > ago(lookback) and ErrorCode == 0
+    | join kind=leftanti baseline on AccountObjectId, IPAddress
+    | summarize FirstNewIpSignIn = min(Timestamp), NewIPs = make_set(IPAddress, 10), Countries = make_set(Country, 5)
+                by AccountObjectId, AccountUpn;
+CloudAppEvents
+| where Timestamp > ago(lookback)
+| where ActionType in ("New-InboxRule", "Set-InboxRule", "UpdateInboxRules", "Set-Mailbox",
+                       "Consent to application.", "User registered security info.",
+                       "Register device.", "Add registered owner to device.")
+    or (ActionType == "Update user." and tostring(RawEventData) has "StrongAuthentication")
+| join kind=inner newIpSignins on AccountObjectId
+| where Timestamp between (FirstNewIpSignIn .. (FirstNewIpSignIn + window))
+| project Timestamp, AccountUpn, ActionType, IPAddress, CountryCode, FirstNewIpSignIn, NewIPs, Countries, RawEventData
+| sort by Timestamp desc

@@ -1,0 +1,12 @@
+// Step 3: AMSI bypass, Defender tampering and log clearing via PowerShell
+let lookback = 7d;
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ ("powershell.exe", "pwsh.exe")
+| where ProcessCommandLine has_any ("AmsiUtils", "amsiInitFailed", "AmsiScanBuffer",
+                                    "Set-MpPreference", "Add-MpPreference", "Remove-MpPreference",
+                                    "DisableRealtimeMonitoring", "DisableIOAVProtection", "DisableBehaviorMonitoring",
+                                    "ExclusionPath", "ExclusionProcess", "ExclusionExtension",
+                                    "Clear-EventLog", "Remove-EventLog", "wevtutil")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, InitiatingProcessCommandLine, ProcessCommandLine
+| sort by Timestamp desc

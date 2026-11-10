@@ -1,0 +1,12 @@
+// Step 3: tenant-wide hunt for session cookie replay (one SessionId used from several countries)
+// UAChanged = true (user agent changed within the same session) is the strongest replay signal
+let lookback = 7d;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback) and ErrorCode == 0 and isnotempty(SessionId)
+| summarize CountryCount = dcount(Country), Countries = make_set(Country, 10),
+            IPs = make_set(IPAddress, 20), UADistinct = dcount(UserAgent), UserAgents = make_set(UserAgent, 5),
+            Apps = make_set(Application, 10), First = min(Timestamp), Last = max(Timestamp)
+            by AccountUpn, SessionId
+| where CountryCount > 1
+| extend UAChanged = UADistinct > 1
+| sort by UAChanged desc, CountryCount desc

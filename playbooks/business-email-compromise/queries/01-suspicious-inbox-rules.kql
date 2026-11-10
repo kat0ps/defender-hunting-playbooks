@@ -1,0 +1,23 @@
+// Step 1: inbox rules scored by BEC risk indicators
+// High scores: forwarding/deleting + finance keywords, or very short/meaningless rule names (".", "..", ",,")
+let lookback = 30d;
+let financeWords = dynamic(["invoice", "payment", "bank", "banking", "eft", "remittance", "proof of payment",
+                            "wire", "swift", "beneficiary", "account details", "statement of account"]);
+CloudAppEvents
+| where Timestamp > ago(lookback)
+| where ActionType in ("New-InboxRule", "Set-InboxRule", "UpdateInboxRules")
+| extend RawText = tostring(RawEventData)
+| extend RuleName = extract(@'\{"Name":"Name","Value":"([^"]*)"\}', 1, RawText)
+| extend Forwards = RawText has_any ("ForwardTo", "ForwardAsAttachmentTo", "RedirectTo"),
+         Deletes = RawText has_any ("DeleteMessage", "SoftDeleteMessage"),
+         MarksRead = RawText has "MarkAsRead",
+         HidesMail = RawText has_any ("RSS Feeds", "RSS Subscriptions", "Conversation History", "Archive"),
+         FinanceKeywords = RawText has_any (financeWords),
+         ShortName = isnotempty(RuleName) and strlen(trim(@"\s", RuleName)) <= 3
+| extend RiskScore = 2 * toint(Forwards) + 2 * toint(Deletes) + toint(MarksRead) + toint(HidesMail)
+                   + 2 * toint(FinanceKeywords) + 2 * toint(ShortName)
+| where RiskScore >= 2
+| project Timestamp, AccountDisplayName, AccountObjectId, ActionType, RuleName, RiskScore,
+          Forwards, Deletes, MarksRead, HidesMail, FinanceKeywords, ShortName,
+          IPAddress, CountryCode, ISP, RawEventData
+| sort by RiskScore desc, Timestamp desc

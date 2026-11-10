@@ -1,0 +1,11 @@
+// Step 5: distributed spray tied together by a shared user agent (same tool, many IPs, many users)
+let lookback = 1d;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback)
+| where ErrorCode in (50126, 50034, 50053)
+| summarize Attempts = count(), Users = dcount(AccountUpn), IPs = dcount(IPAddress),
+            Countries = make_set(Country, 20), SampleIPs = make_set(IPAddress, 20),
+            First = min(Timestamp), Last = max(Timestamp)
+            by UserAgent, Application, ClientAppUsed
+| where Users >= 20 and IPs >= 5
+| sort by Users desc

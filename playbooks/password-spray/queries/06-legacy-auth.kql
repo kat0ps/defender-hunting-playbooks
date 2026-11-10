@@ -1,0 +1,11 @@
+// Step 6: legacy authentication attempts (protocols that can't do MFA)
+// SuccessUsers = accounts actually accessed over legacy auth; block legacy auth with Conditional Access
+let lookback = 7d;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback)
+| where ClientAppUsed in ("IMAP4", "POP3", "Authenticated SMTP", "Exchange ActiveSync",
+                          "Other clients", "AutoDiscover", "Offline Address Book")
+| summarize Attempts = count(), Failures = countif(ErrorCode != 0), Successes = countif(ErrorCode == 0),
+            Users = dcount(AccountUpn), SuccessUsers = make_set_if(AccountUpn, ErrorCode == 0, 20)
+            by ClientAppUsed, IPAddress, Country
+| sort by Successes desc, Failures desc

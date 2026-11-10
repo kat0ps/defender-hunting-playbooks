@@ -1,0 +1,20 @@
+// Step 2: user clicked an email link, then signed in successfully from an IP they have never used, within 30 minutes
+// In AiTM the sign-in IP is the attacker's proxy server, not the user's own IP
+let lookback = 7d;
+let window = 30m;
+let clicks = UrlClickEvents
+    | where Timestamp > ago(lookback)
+    | where ActionType == "ClickAllowed" or IsClickedThrough == true
+    | project ClickTime = Timestamp, AccountUpn = tolower(AccountUpn), Url, ClickIP = IPAddress, NetworkMessageId;
+let baseline = EntraIdSignInEvents
+    | where Timestamp between (ago(30d) .. ago(lookback)) and ErrorCode == 0
+    | distinct AccountUpn = tolower(AccountUpn), IPAddress;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback) and ErrorCode == 0
+| extend AccountUpn = tolower(AccountUpn)
+| join kind=inner clicks on AccountUpn
+| where Timestamp between (ClickTime .. (ClickTime + window))
+| join kind=leftanti baseline on AccountUpn, IPAddress
+| project ClickTime, SignInTime = Timestamp, AccountUpn, Url, ClickIP, SignInIP = IPAddress,
+          Country, City, Application, UserAgent, AuthenticationRequirement, SessionId, NetworkMessageId
+| sort by ClickTime desc

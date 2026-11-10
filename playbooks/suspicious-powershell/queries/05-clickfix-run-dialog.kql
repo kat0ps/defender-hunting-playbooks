@@ -1,0 +1,10 @@
+// Step 5: ClickFix: commands pasted into the Windows Run dialog (Win+R), recorded in the RunMRU registry key
+// Users don't normally type PowerShell download commands into Run; fake CAPTCHA pages trick them into it
+let lookback = 30d;
+DeviceRegistryEvents
+| where Timestamp > ago(lookback)
+| where RegistryKey has @"\CurrentVersion\Explorer\RunMRU"
+| where RegistryValueData has_any ("powershell", "pwsh", "mshta", "curl", "iex", "http", "cmd /c", "cmd.exe /c",
+                                   "msiexec", "bitsadmin", "certutil", "rundll32", "wscript")
+| project Timestamp, DeviceName, Account = InitiatingProcessAccountName, RegistryValueName, RegistryValueData
+| sort by Timestamp desc

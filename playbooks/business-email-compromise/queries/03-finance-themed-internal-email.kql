@@ -1,0 +1,15 @@
+// Step 3: internal senders emailing finance-themed subjects, ranked by reach
+// Look for senders outside finance, or a sudden spike in recipients/external recipients
+let lookback = 7d;
+let financeWords = dynamic(["invoice", "payment", "banking details", "bank details", "eft", "remittance",
+                            "proof of payment", "wire", "overdue", "statement of account", "beneficiary"]);
+EmailEvents
+| where Timestamp > ago(lookback)
+| where EmailDirection in ("Outbound", "Intra-org")
+| where Subject has_any (financeWords)
+| summarize Emails = count(), Recipients = dcount(RecipientEmailAddress),
+            ExternalRecipients = dcountif(RecipientEmailAddress, EmailDirection == "Outbound"),
+            SenderIPs = make_set(SenderIPv4, 10), Subjects = make_set(Subject, 10),
+            First = min(Timestamp), Last = max(Timestamp)
+            by SenderFromAddress
+| sort by Recipients desc

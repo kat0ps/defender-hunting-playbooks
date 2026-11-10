@@ -1,0 +1,18 @@
+// Step 4: "low and slow" attacks, with one user failing from many different IPs (rotating proxies/botnets)
+// LastSuccess and SuccessIPs show whether the account was later accessed, and from where
+let lookback = 7d;
+let minIPs = 5;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback) and ErrorCode == 50126
+| summarize Failures = count(), SourceIPs = dcount(IPAddress), Countries = make_set(Country, 10),
+            First = min(Timestamp), Last = max(Timestamp)
+            by AccountUpn
+| where SourceIPs >= minIPs
+| join kind=leftouter (
+    EntraIdSignInEvents
+    | where Timestamp > ago(lookback) and ErrorCode == 0
+    | summarize LastSuccess = max(Timestamp), SuccessIPs = make_set(IPAddress, 10), SuccessCountries = make_set(Country, 5)
+                by AccountUpn
+  ) on AccountUpn
+| project-away AccountUpn1
+| sort by SourceIPs desc

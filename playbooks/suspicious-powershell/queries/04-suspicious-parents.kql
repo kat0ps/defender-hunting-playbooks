@@ -1,0 +1,13 @@
+// Step 4: script engines launched by Office, mail, HTA, script hosts or server processes
+// Office/Outlook -> PowerShell is a classic malicious document pattern; w3wp/sqlservr -> PowerShell suggests a web shell or SQL abuse
+let lookback = 30d;
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ ("powershell.exe", "pwsh.exe", "cmd.exe", "mshta.exe", "wscript.exe", "cscript.exe",
+                      "rundll32.exe", "regsvr32.exe")
+| where InitiatingProcessFileName in~ ("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe", "onenote.exe",
+                                       "msaccess.exe", "mspub.exe", "acrord32.exe", "mshta.exe", "wscript.exe",
+                                       "cscript.exe", "w3wp.exe", "sqlservr.exe")
+| project Timestamp, DeviceName, AccountName, Parent = InitiatingProcessFileName,
+          ParentCommandLine = InitiatingProcessCommandLine, FileName, ProcessCommandLine, SHA256
+| sort by Timestamp desc

@@ -1,0 +1,19 @@
+// Step 2: users who SUCCESSFULLY signed in from an IP that was spraying the tenant
+// Any row here should be treated as a compromised account
+let lookback = 1d;
+let minUsers = 10;
+let sprayIPs = EntraIdSignInEvents
+    | where Timestamp > ago(lookback) and ErrorCode in (50126, 50053, 50034)
+    | summarize TargetedUsers = dcount(AccountUpn) by IPAddress
+    | where TargetedUsers >= minUsers
+    | project IPAddress;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback)
+| where IPAddress in (sprayIPs)
+| summarize Failures = countif(ErrorCode != 0), Successes = countif(ErrorCode == 0),
+            FirstSuccess = minif(Timestamp, ErrorCode == 0),
+            Apps = make_set_if(Application, ErrorCode == 0, 10),
+            AuthRequirement = make_set_if(AuthenticationRequirement, ErrorCode == 0)
+            by AccountUpn, IPAddress
+| where Successes > 0
+| sort by FirstSuccess asc

@@ -1,0 +1,31 @@
+// Step 7: unified device timeline +/- 30 minutes around the suspicious event
+let device = "<DeviceName>";
+let eventTime = datetime(2026-01-01 00:00:00);
+let window = 30m;
+let startTime = eventTime - window;
+let endTime = eventTime + window;
+union
+( DeviceProcessEvents
+  | where DeviceName =~ device and Timestamp between (startTime .. endTime)
+  | project Timestamp, Type = "Process", Detail = strcat(InitiatingProcessFileName, " -> ", FileName),
+            CommandLine = ProcessCommandLine, Account = AccountName ),
+( DeviceNetworkEvents
+  | where DeviceName =~ device and Timestamp between (startTime .. endTime)
+  | project Timestamp, Type = strcat("Network ", ActionType),
+            Detail = strcat(InitiatingProcessFileName, " -> ", RemoteUrl, " ", RemoteIP, ":", RemotePort),
+            CommandLine = InitiatingProcessCommandLine, Account = InitiatingProcessAccountName ),
+( DeviceFileEvents
+  | where DeviceName =~ device and Timestamp between (startTime .. endTime)
+  | where ActionType in ("FileCreated", "FileModified", "FileRenamed")
+  | project Timestamp, Type = strcat("File ", ActionType), Detail = strcat(InitiatingProcessFileName, " -> ", FolderPath),
+            CommandLine = InitiatingProcessCommandLine, Account = InitiatingProcessAccountName ),
+( DeviceRegistryEvents
+  | where DeviceName =~ device and Timestamp between (startTime .. endTime)
+  | project Timestamp, Type = strcat("Registry ", ActionType),
+            Detail = strcat(InitiatingProcessFileName, " -> ", RegistryKey, "\\", RegistryValueName, " = ", RegistryValueData),
+            CommandLine = InitiatingProcessCommandLine, Account = InitiatingProcessAccountName ),
+( DeviceLogonEvents
+  | where DeviceName =~ device and Timestamp between (startTime .. endTime)
+  | project Timestamp, Type = strcat("Logon ", ActionType), Detail = strcat(LogonType, " from ", RemoteIP),
+            CommandLine = "", Account = AccountName )
+| sort by Timestamp asc

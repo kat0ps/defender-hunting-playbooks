@@ -1,0 +1,12 @@
+// Step 6: public destinations PowerShell connected to on only 1-2 devices (rare = worth reviewing)
+let lookback = 7d;
+DeviceNetworkEvents
+| where Timestamp > ago(lookback)
+| where InitiatingProcessFileName in~ ("powershell.exe", "pwsh.exe")
+| where RemoteIPType == "Public"
+| summarize Connections = count(), Devices = dcount(DeviceName), DeviceList = make_set(DeviceName, 10),
+            RemoteIPs = make_set(RemoteIP, 10), Ports = make_set(RemotePort, 10),
+            CommandLines = make_set(InitiatingProcessCommandLine, 5), First = min(Timestamp), Last = max(Timestamp)
+            by RemoteUrl
+| where Devices <= 2
+| sort by First desc

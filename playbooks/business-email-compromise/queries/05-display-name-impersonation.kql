@@ -1,0 +1,12 @@
+// Step 5: external emails using a VIP's display name (CEO/CFO fraud)
+// Fill in your executives' names and your internal domains
+let lookback = 30d;
+let vipNames = dynamic(["First Last", "First2 Last2"]);
+let internalDomains = dynamic(["yourdomain.com"]);
+EmailEvents
+| where Timestamp > ago(lookback) and EmailDirection == "Inbound"
+| where SenderDisplayName has_any (vipNames)
+| where not(SenderFromDomain in~ (internalDomains))
+| project Timestamp, SenderDisplayName, SenderFromAddress, SenderFromDomain, RecipientEmailAddress,
+          Subject, DeliveryAction, LatestDeliveryLocation, ThreatTypes, NetworkMessageId
+| sort by Timestamp desc

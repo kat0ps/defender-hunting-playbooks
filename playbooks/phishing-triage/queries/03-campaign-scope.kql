@@ -1,0 +1,25 @@
+// Step 3: every recipient of the same campaign (matched by sender, subject, URL domain or attachment hash)
+// Fill in any of the variables from steps 1-2; leave unused ones empty
+let lookback = 30d;
+let sender = "";
+let subjectText = "";
+let urlDomain = "";
+let fileHash = "";
+let byUrl = EmailUrlInfo
+    | where Timestamp > ago(lookback) and isnotempty(urlDomain) and UrlDomain =~ urlDomain
+    | distinct NetworkMessageId;
+let byHash = EmailAttachmentInfo
+    | where Timestamp > ago(lookback) and isnotempty(fileHash) and SHA256 =~ fileHash
+    | distinct NetworkMessageId;
+EmailEvents
+| where Timestamp > ago(lookback)
+| where (isnotempty(sender) and SenderFromAddress =~ sender)
+     or (isnotempty(subjectText) and Subject has subjectText)
+     or NetworkMessageId in (byUrl)
+     or NetworkMessageId in (byHash)
+| summarize Recipients = dcount(RecipientEmailAddress), RecipientList = make_set(RecipientEmailAddress, 200),
+            Delivered = countif(DeliveryAction == "Delivered"), Blocked = countif(DeliveryAction in ("Blocked", "Junked")),
+            CurrentLocations = make_set(LatestDeliveryLocation), NetworkMessageIds = make_set(NetworkMessageId, 200),
+            First = min(Timestamp), Last = max(Timestamp)
+            by SenderFromAddress, SenderIPv4, Subject
+| sort by Recipients desc

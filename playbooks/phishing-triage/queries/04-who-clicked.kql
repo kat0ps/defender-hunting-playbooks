@@ -1,0 +1,12 @@
+// Step 4: who clicked the link(s)
+// ClickAllowed or IsClickedThrough == true means the user reached the site; ClickBlocked means Safe Links stopped it
+// Paste NetworkMessageIds from step 3, and/or a URL domain
+let lookback = 30d;
+let urlDomain = "";
+let networkMessageIds = dynamic([]);
+UrlClickEvents
+| where Timestamp > ago(lookback)
+| where (isnotempty(urlDomain) and Url has urlDomain) or NetworkMessageId in (networkMessageIds)
+| project Timestamp, AccountUpn, Url, ActionType, IsClickedThrough, IPAddress, Workload,
+          ThreatTypes, DetectionMethods, NetworkMessageId
+| sort by Timestamp asc

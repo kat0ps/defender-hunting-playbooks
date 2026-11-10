@@ -1,0 +1,10 @@
+// Step 2: URLs and attachments in the email, to pivot on in steps 3-5
+let networkMessageId = "<NetworkMessageId>";
+union
+( EmailUrlInfo
+  | where NetworkMessageId == networkMessageId
+  | project Type = "URL", Value = Url, Detail = strcat(UrlDomain, " | found in: ", UrlLocation), SHA256 = "" ),
+( EmailAttachmentInfo
+  | where NetworkMessageId == networkMessageId
+  | project Type = "Attachment", Value = FileName, Detail = strcat(FileType, " | threats: ", tostring(ThreatTypes)), SHA256 )
+| distinct Type, Value, Detail, SHA256

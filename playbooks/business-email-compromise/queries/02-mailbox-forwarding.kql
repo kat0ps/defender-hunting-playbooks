@@ -1,0 +1,13 @@
+// Step 2: mailbox-level forwarding and transport rules that redirect or copy mail
+// External ForwardTo addresses with no business reason = high priority
+let lookback = 30d;
+CloudAppEvents
+| where Timestamp > ago(lookback)
+| where ActionType in ("Set-Mailbox", "New-TransportRule", "Set-TransportRule")
+| extend RawText = tostring(RawEventData)
+| where RawText has_any ("ForwardingSmtpAddress", "ForwardingAddress", "DeliverToMailboxAndForward",
+                         "RedirectMessageTo", "BlindCopyTo", "CopyTo")
+| extend ForwardTo = extract(@'"Name":"(?:ForwardingSmtpAddress|ForwardingAddress|RedirectMessageTo|BlindCopyTo)","Value":"([^"]*)"', 1, RawText),
+         TargetMailbox = tostring(parse_json(RawEventData).ObjectId)
+| project Timestamp, AccountDisplayName, ActionType, TargetMailbox, ForwardTo, IPAddress, CountryCode, ISP, RawEventData
+| sort by Timestamp desc

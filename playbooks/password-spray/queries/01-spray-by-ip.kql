@@ -1,0 +1,14 @@
+// Step 1: IPs failing authentication against many different users
+// Tune minUsers to your tenant size; exclude your own office egress IPs
+let lookback = 1d;
+let minUsers = 10;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback)
+| where ErrorCode in (50126, 50053, 50034, 50057, 50055)
+| summarize Attempts = count(), TargetedUsers = dcount(AccountUpn), SampleUsers = make_set(AccountUpn, 20),
+            ErrorCodes = make_set(ErrorCode), Apps = make_set(Application, 10),
+            ClientApps = make_set(ClientAppUsed, 10), UserAgents = make_set(UserAgent, 5),
+            First = min(Timestamp), Last = max(Timestamp)
+            by IPAddress, Country
+| where TargetedUsers >= minUsers
+| sort by TargetedUsers desc

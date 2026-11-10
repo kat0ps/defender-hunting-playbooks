@@ -1,0 +1,15 @@
+// Step 6: mailbox reads, sends and deletes from IPs not in the user's previous 30-day baseline
+// Deleting from Sent Items after sending = covering tracks
+let user = "user@domain.com";
+let lookback = 7d;
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+let baselineIPs = CloudAppEvents
+    | where Timestamp between (ago(30d) .. ago(lookback)) and AccountObjectId == userId
+    | distinct IPAddress;
+CloudAppEvents
+| where Timestamp > ago(lookback) and AccountObjectId == userId
+| where ActionType in ("MailItemsAccessed", "Send", "SendAs", "SendOnBehalf", "SoftDelete", "HardDelete", "MoveToDeletedItems")
+| where IPAddress !in (baselineIPs)
+| summarize Events = count(), First = min(Timestamp), Last = max(Timestamp)
+            by ActionType, IPAddress, CountryCode, ISP, UserAgent
+| sort by First asc

@@ -1,0 +1,13 @@
+// Step 1: sign-ins from HTTP automation libraries (common in AiTM proxy kits and token replay tooling)
+// Focus on Successes > 0 from hosting/VPN IPs; check whether the account is a known service account
+let lookback = 7d;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback)
+| where UserAgent has_any ("axios/", "node-fetch", "python-requests", "Go-http-client", "PostmanRuntime",
+                           "curl/", "aiohttp", "undici", "libwww-perl")
+| summarize SignIns = count(), Successes = countif(ErrorCode == 0),
+            UserCount = dcount(AccountUpn), Users = make_set(AccountUpn, 50),
+            Apps = make_set(Application, 10), Countries = make_set(Country, 10),
+            First = min(Timestamp), Last = max(Timestamp)
+            by UserAgent, IPAddress
+| sort by Successes desc, UserCount desc

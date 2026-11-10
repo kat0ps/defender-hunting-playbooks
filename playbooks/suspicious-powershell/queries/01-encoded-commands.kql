@@ -1,0 +1,14 @@
+// Step 1: PowerShell with encoded commands, decoded inline (UTF-16LE Base64)
+// SuspiciousDecoded = true when the decoded text contains download/execute patterns
+let lookback = 7d;
+DeviceProcessEvents
+| where Timestamp > ago(lookback)
+| where FileName in~ ("powershell.exe", "pwsh.exe", "powershell_ise.exe")
+| where ProcessCommandLine matches regex @'(?i)\s[-/]e[a-z]*\s+[A-Za-z0-9+/=]{20,}'
+| extend Encoded = extract(@'(?i)\s[-/]e[a-z]*\s+([A-Za-z0-9+/=]{20,})', 1, ProcessCommandLine)
+| extend Decoded = replace_regex(base64_decode_tostring(Encoded), @'\x00', '')
+| extend SuspiciousDecoded = Decoded has_any ("IEX", "Invoke-Expression", "DownloadString", "DownloadFile",
+                                              "FromBase64String", "Net.WebClient", "http", "Invoke-WebRequest", "Start-Process")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, InitiatingProcessCommandLine,
+          SuspiciousDecoded, Decoded, ProcessCommandLine
+| sort by SuspiciousDecoded desc, Timestamp desc

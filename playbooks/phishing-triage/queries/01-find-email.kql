@@ -1,0 +1,14 @@
+// Step 1: find the reported email and its delivery details
+// Fill in ONE (or more) of the variables below from the user report or alert; leave the rest empty
+let networkMessageId = "";
+let sender = "";
+let subjectText = "";
+EmailEvents
+| where Timestamp > ago(30d)
+| where (isnotempty(networkMessageId) and NetworkMessageId == networkMessageId)
+     or (isnotempty(sender) and (SenderFromAddress =~ sender or SenderMailFromAddress =~ sender))
+     or (isnotempty(subjectText) and Subject has subjectText)
+| project Timestamp, NetworkMessageId, SenderDisplayName, SenderFromAddress, SenderMailFromAddress, SenderIPv4,
+          RecipientEmailAddress, Subject, EmailDirection, DeliveryAction, LatestDeliveryLocation,
+          ThreatTypes, DetectionMethods, ConfidenceLevel, AuthenticationDetails
+| sort by Timestamp desc

@@ -1,0 +1,15 @@
+// Step 6: is the email still in anyone's mailbox, and did ZAP or manual remediation run?
+// StillInMailbox == true means the copy needs purging
+let networkMessageIds = dynamic(["<NetworkMessageId>"]);
+EmailEvents
+| where Timestamp > ago(30d) and NetworkMessageId in (networkMessageIds)
+| project NetworkMessageId, RecipientEmailAddress, Subject, DeliveryAction, LatestDeliveryLocation, LatestDeliveryAction
+| join kind=leftouter (
+    EmailPostDeliveryEvents
+    | where Timestamp > ago(30d) and NetworkMessageId in (networkMessageIds)
+    | project NetworkMessageId, RecipientEmailAddress, PostDeliveryTime = Timestamp, PostDeliveryAction = ActionType,
+              ActionTrigger, ActionResult
+  ) on NetworkMessageId, RecipientEmailAddress
+| project-away NetworkMessageId1, RecipientEmailAddress1
+| extend StillInMailbox = LatestDeliveryLocation in ("Inbox/folder", "Junk folder")
+| sort by StillInMailbox desc, RecipientEmailAddress asc

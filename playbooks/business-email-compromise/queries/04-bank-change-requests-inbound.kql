@@ -1,0 +1,16 @@
+// Step 4: inbound banking/payment emails from sender domains never seen in the previous 30 days
+// Compare SenderFromDomain to your real suppliers' domains: lookalikes swap letters (rn/m, l/1) or TLDs (.co vs .co.za)
+let lookback = 7d;
+let financeWords = dynamic(["bank details", "banking details", "change of bank", "new bank", "updated bank",
+                            "account details", "remittance", "invoice", "payment", "proof of payment", "beneficiary"]);
+let knownDomains = EmailEvents
+    | where Timestamp between (ago(30d) .. ago(lookback)) and EmailDirection == "Inbound"
+    | distinct SenderFromDomain;
+EmailEvents
+| where Timestamp > ago(lookback) and EmailDirection == "Inbound"
+| where Subject has_any (financeWords)
+| where SenderFromDomain !in (knownDomains)
+| project Timestamp, SenderDisplayName, SenderFromAddress, SenderFromDomain, SenderMailFromDomain,
+          RecipientEmailAddress, Subject, DeliveryAction, LatestDeliveryLocation, ThreatTypes,
+          AuthenticationDetails, NetworkMessageId
+| sort by Timestamp desc

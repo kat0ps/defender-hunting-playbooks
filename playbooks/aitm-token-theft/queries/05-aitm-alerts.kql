@@ -1,0 +1,11 @@
+// Step 5: Defender's built-in AiTM / stolen-cookie alerts with their users, IPs and URLs
+AlertInfo
+| where Timestamp > ago(30d)
+| where Title has_any ("AiTM", "adversary-in-the-middle", "session cookie", "phishing kit", "stolen session")
+| join kind=inner (
+    AlertEvidence
+    | where EntityType in ("User", "Mailbox", "Ip", "Url")
+    | project AlertId, EntityType, Entity = coalesce(AccountUpn, RemoteIP, RemoteUrl)
+  ) on AlertId
+| summarize Entities = make_set(strcat(EntityType, ": ", Entity), 30) by AlertId, Timestamp, Title, Severity, ServiceSource
+| sort by Timestamp desc
