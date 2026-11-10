@@ -30,6 +30,10 @@ Password spray ──successful sign-in─────────────�
 Business email compromise ◀──inbox rules / fraud emails── any compromised account
 ```
 
+## Cloud detection engineering lab
+
+A hands-on [lab](lab/README.md) that deploys Microsoft Sentinel on Azure with **Terraform**, converts these detections into Sentinel analytics rules **as code**, deploys them with **GitHub Actions**, and proves each one fires with recorded evidence. Start with the [learning guide](lab/docs/learning-guide.md).
+
 ## Detections
 
 **14 rule-ready detections** (Timestamp, ReportId and entity columns included) that you can run as hunts or deploy as Defender custom detection rules. Each one links back to the playbook to follow when it fires.
@@ -61,6 +65,9 @@ playbooks/<scenario>/README.md      # step-by-step investigation guide
 playbooks/<scenario>/queries/*.kql  # one query per step, numbered in order
 detections/*.kql                    # rule-ready hunts / custom detection rules (index in detections/README.md)
 templates/                          # playbook, detection, report, closure and email templates
+detections/sentinel/*.yaml          # Sentinel versions of the detections (deployed by the lab)
+lab/                                # cloud detection engineering lab: Terraform, tests, evidence, learning guide
+.github/workflows/                  # lab CI/CD pipelines
 ```
 
 ## How to use
@@ -73,6 +80,7 @@ templates/                          # playbook, detection, report, closure and e
 
 ## Changelog
 
+- **2026-11-10**: Added the cloud detection engineering lab (`lab/`): learning guide, build prompts, folder scaffold for Terraform, Sentinel rules, simulations, evidence and workflows.
 - **2026-11-10**: Added 13 new detection rules (14 total) with a detections index; made impossible travel rule-ready. Added templates: incident report, closure notes, escalation email, phishing user notification, detection rule. Updated the playbook template. Linked rules and templates from every playbook.
 - **2026-11-10**: Added user-reported email playbook (M365 suspicious user submission): one-row triage summary, all submissions, similar reports, sender reputation.
 - **2026-11-10**: Added 5 playbooks: AiTM / token theft, password spray, phishing triage, business email compromise, suspicious PowerShell (including ClickFix). Added area and MITRE columns to the index.
