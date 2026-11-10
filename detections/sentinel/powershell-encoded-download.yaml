@@ -1,0 +1,48 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: ba850bac-d796-537f-82aa-cb5981ba2ae9
+name: "PowerShell: encoded command that downloads or executes code"
+description: |
+  PowerShell started with -EncodedCommand (or a short form like -enc or -e) where the decoded script contains
+  a download or execute pattern (IEX, DownloadString, Net.WebClient, Invoke-WebRequest, FromBase64String,
+  Start-BitsTransfer). Encoding hides the payload from simple command-line checks.
+  MITRE sub-techniques: T1059.001 (Command and Scripting Interpreter: PowerShell), T1027.010 (Obfuscated Files or Information: Command Obfuscation).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/suspicious-powershell/README.md
+severity: High
+enabled: true
+queryFrequency: PT1H
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [Execution, DefenseEvasion, CommandAndControl]
+techniques: [T1059, T1027, T1105]
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: HostName
+  - entityType: Account
+    fieldMappings:
+      - identifier: AadUserId
+        columnName: AccountObjectId
+      - identifier: FullName
+        columnName: AccountUpn
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes: [DeviceProcessEvents]
+requiredTables: [DeviceProcessEvents]
+sourceRule: ../powershell-encoded-download.kql
+query: |
+  // Tuning: exclude management agents (Intune/SCCM/RMM) by InitiatingProcessFileName after review
+  DeviceProcessEvents
+  | where FileName in~ ("powershell.exe", "pwsh.exe", "powershell_ise.exe")
+  | where ProcessCommandLine matches regex @'(?i)\s[-/]e[a-z]*\s+[A-Za-z0-9+/=]{20,}'
+  | extend Encoded = extract(@'(?i)\s[-/]e[a-z]*\s+([A-Za-z0-9+/=]{20,})', 1, ProcessCommandLine)
+  // -EncodedCommand is UTF-16LE base64; decoding to a UTF-8 string leaves NUL bytes, which are stripped here.
+  | extend Decoded = replace_regex(base64_decode_tostring(Encoded), @'\x00', '')
+  | where Decoded has_any ("IEX", "Invoke-Expression", "DownloadString", "DownloadFile", "Net.WebClient",
+                           "Invoke-WebRequest", "FromBase64String", "Start-BitsTransfer")
+  | extend HostName = tostring(split(DeviceName, ".")[0])    // FQDN -> short name for the Host entity
+  | project TimeGenerated, DeviceId, DeviceName, HostName, AccountObjectId, AccountUpn, AccountName,
+            InitiatingProcessFileName, Decoded, ProcessCommandLine

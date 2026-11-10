@@ -1,0 +1,54 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: 8ac349b8-643c-59c0-8d03-7e43c0884d83
+name: "AiTM: successful sign-in from an HTTP automation user agent"
+description: |
+  A successful Entra ID sign-in whose user agent is an HTTP library or tool (axios, python-requests,
+  Go-http-client, curl and similar). AiTM phishing proxies and token-replay tooling often sign in this way.
+  Real users sign in from browsers and Office apps.
+  MITRE sub-techniques: T1550.004 (Use Alternate Authentication Material: Web Session Cookie).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/aitm-token-theft/README.md
+severity: High
+enabled: true
+# The Defender version looks back 4h every 1h, and Defender de-duplicates the overlapping alerts.
+# Sentinel does not de-duplicate, so queryPeriod = queryFrequency here: every event is checked exactly once.
+queryFrequency: PT1H
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [CredentialAccess, DefenseEvasion]
+techniques: [T1557, T1550]
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: AadUserId
+        columnName: UserId
+      - identifier: FullName
+        columnName: UserPrincipalName
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: IPAddress
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes: [SigninLogs, AADNonInteractiveUserSignInLogs]
+requiredTables: [SigninLogs, AADNonInteractiveUserSignInLogs]
+sourceRule: ../aitm-automation-useragent-signin.kql
+query: |
+  // Tuning: add known service accounts that use scripts to excludedAccounts
+  let excludedAccounts = dynamic([]);   // e.g. dynamic(["svc-backup@yourdomain.com"])
+  // EntraIdSignInEvents -> both Sentinel sign-in tables. LocationDetails is a JSON string in the
+  // non-interactive table, so parse_json() it there to match the dynamic column in SigninLogs.
+  union
+      (SigninLogs
+          | extend Loc = LocationDetails),
+      (AADNonInteractiveUserSignInLogs
+          | extend Loc = parse_json(LocationDetails))
+  | where ResultType == "0"    // ErrorCode == 0 -> ResultType == "0" (string column)
+  | where UserAgent has_any ("axios/", "node-fetch", "python-requests", "Go-http-client", "PostmanRuntime",
+                             "curl/", "aiohttp", "undici", "libwww-perl")
+  | where not(UserPrincipalName in~ (excludedAccounts))
+  | extend Country = tostring(Loc.countryOrRegion), City = tostring(Loc.city)
+  | project TimeGenerated, UserId, UserPrincipalName, IPAddress, Country, City,
+            AppDisplayName, UserAgent, AuthenticationRequirement, SessionId

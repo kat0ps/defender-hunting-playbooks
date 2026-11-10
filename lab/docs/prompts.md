@@ -1,6 +1,6 @@
 # Build Prompts
 
-Paste these into Claude Code (or Claude with this repo connected), one at a time, in order. Each prompt is self-contained.
+Use these one at a time, in order. Each prompt is self-contained.
 
 The lab lives **inside this repo**:
 - Defender XDR rules stay in `detections/*.kql` (the source of truth, linked from the playbooks).

@@ -1,0 +1,44 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: d2a7fedd-0d67-5465-b9a2-22a62b5c1190
+name: "BEC: external email using an executive's display name"
+description: |
+  An inbound email was delivered from outside your domains with a sender display name matching one of your
+  executives, for example "Jane Smith <jane.smith.ceo@gmail.com>". This is the setup for CEO or CFO
+  payment fraud.
+  MITRE sub-techniques: none (T1656 Impersonation and T1566 Phishing are parent techniques).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/business-email-compromise/README.md
+severity: Medium
+enabled: true
+queryFrequency: PT1H
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [DefenseEvasion, InitialAccess]
+# T1656 (Impersonation) was added in MITRE ATT&CK v14. If Sentinel ever rejects it, keep T1566 only.
+techniques: [T1656, T1566]
+entityMappings:
+  - entityType: Mailbox
+    fieldMappings:
+      - identifier: MailboxPrimaryAddress
+        columnName: RecipientEmailAddress
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes: [EmailEvents]
+requiredTables: [EmailEvents]
+sourceRule: ../bec-vip-impersonation.kql
+query: |
+  // Tuning: fill in vipNames and internalDomains; exclude executives' known personal addresses if they email work
+  let vipNames = dynamic(["First Last", "First2 Last2"]);
+  let internalDomains = dynamic(["yourdomain.com"]);
+  // EmailEvents keeps its name in Sentinel (streamed by the Defender XDR connector); Timestamp -> TimeGenerated.
+  EmailEvents
+  | where EmailDirection == "Inbound" and DeliveryAction == "Delivered"
+  | where SenderDisplayName has_any (vipNames)
+  | where not(SenderFromDomain in~ (internalDomains))
+  // Since October 2025 the Sentinel EmailEvents table adds a new row whenever an email's verdict or
+  // location changes. Keep only the latest row per email and recipient, so one email produces one alert.
+  | summarize arg_max(TimeGenerated, *) by NetworkMessageId, RecipientEmailAddress
+  | project TimeGenerated, RecipientEmailAddress, SenderDisplayName, SenderFromAddress, SenderFromDomain,
+            Subject, LatestDeliveryLocation, NetworkMessageId
