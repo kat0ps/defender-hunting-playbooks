@@ -1,0 +1,51 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: 4f5ee7c0-daac-5e30-b3b0-d938f35468a9
+name: "PowerShell: Office or server process spawning a script engine"
+description: |
+  Word, Excel, Outlook, PowerPoint, OneNote, Adobe Reader, mshta or a web/SQL server process started
+  PowerShell, cmd, mshta, wscript, cscript, rundll32 or regsvr32. This is how most malicious documents and
+  web shells run their first command.
+  MITRE sub-techniques: T1204.002 (User Execution: Malicious File), T1059.001 (Command and Scripting Interpreter: PowerShell).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/suspicious-powershell/README.md
+severity: High
+enabled: true
+# Defender can run this as NRT (near real time). Sentinel has NRT rules too, but they are a different
+# resource type, so this lab uses a 1-hour scheduled rule. queryPeriod = frequency avoids duplicate alerts.
+queryFrequency: PT1H
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [Execution]
+techniques: [T1204, T1059]
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: HostName
+  - entityType: Account
+    fieldMappings:
+      - identifier: AadUserId
+        columnName: AccountObjectId
+      - identifier: FullName
+        columnName: AccountUpn
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes: [DeviceProcessEvents]
+requiredTables: [DeviceProcessEvents]
+sourceRule: ../powershell-office-child-process.kql
+query: |
+  // Tuning: some Office add-ins and macros legitimately call cmd/PowerShell; exclude by exact ProcessCommandLine after review
+  // DeviceProcessEvents keeps its name and columns in Sentinel; Timestamp -> TimeGenerated, ReportId dropped.
+  DeviceProcessEvents
+  | where FileName in~ ("powershell.exe", "pwsh.exe", "cmd.exe", "mshta.exe", "wscript.exe", "cscript.exe",
+                        "rundll32.exe", "regsvr32.exe")
+  | where InitiatingProcessFileName in~ ("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe", "onenote.exe",
+                                         "msaccess.exe", "mspub.exe", "acrord32.exe", "mshta.exe",
+                                         "w3wp.exe", "sqlservr.exe")
+  // Host entity: DeviceName is an FQDN (pc01.contoso.com) but the HostName identifier expects the short name.
+  | extend HostName = tostring(split(DeviceName, ".")[0])
+  | project TimeGenerated, DeviceId, DeviceName, HostName, AccountObjectId, AccountUpn, AccountName,
+            Parent = InitiatingProcessFileName, ParentCommandLine = InitiatingProcessCommandLine,
+            FileName, ProcessCommandLine, SHA256

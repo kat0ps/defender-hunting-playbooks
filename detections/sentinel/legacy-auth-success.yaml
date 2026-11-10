@@ -1,0 +1,51 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: 85d86cf4-9931-5ecf-a598-acb0f4b8285f
+name: "Legacy authentication: successful sign-in"
+description: |
+  A successful sign-in over a legacy protocol (IMAP, POP3, authenticated SMTP, Exchange ActiveSync and
+  similar). Legacy protocols can't do MFA, so password-spray and credential-stuffing attacks favour them.
+  If Conditional Access blocks legacy authentication, this rule should never fire.
+  MITRE sub-techniques: T1078.004 (Valid Accounts: Cloud Accounts).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/password-spray/README.md
+severity: Medium
+enabled: true
+# queryPeriod = queryFrequency so each sign-in is evaluated once (no duplicate alerts).
+queryFrequency: PT1H
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [InitialAccess, CredentialAccess]
+techniques: [T1078, T1110]
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: AadUserId
+        columnName: UserId
+      - identifier: FullName
+        columnName: UserPrincipalName
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: IPAddress
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes: [SigninLogs, AADNonInteractiveUserSignInLogs]
+requiredTables: [SigninLogs, AADNonInteractiveUserSignInLogs]
+sourceRule: ../legacy-auth-success.kql
+query: |
+  // Tuning: exclude approved devices (scanners/printers using SMTP)
+  let excludedAccounts = dynamic([]);   // e.g. dynamic(["scanner@yourdomain.com"])
+  union
+      (SigninLogs
+          | extend Loc = LocationDetails),
+      (AADNonInteractiveUserSignInLogs
+          | extend Loc = parse_json(LocationDetails))    // JSON string in this table
+  | where ResultType == "0"
+  // ClientAppUsed has the same name and values in Defender and in the Entra ID log tables.
+  | where ClientAppUsed in ("IMAP4", "POP3", "Authenticated SMTP", "Exchange ActiveSync",
+                            "Other clients", "AutoDiscover", "Offline Address Book")
+  | where not(UserPrincipalName in~ (excludedAccounts))
+  | extend Country = tostring(Loc.countryOrRegion)
+  | project TimeGenerated, UserId, UserPrincipalName, IPAddress, Country, ClientAppUsed, AppDisplayName, UserAgent

@@ -1,0 +1,46 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: ad219488-1bae-5e45-adcd-9b8363f7461a
+name: "PowerShell: Defender or AMSI tampering, or event log clearing"
+description: |
+  PowerShell tried to bypass AMSI, turn off Defender real-time or behaviour monitoring, add or remove
+  Defender exclusions, or clear Windows event logs. Attackers do this just before running a payload or just
+  after, to cover their tracks.
+  MITRE sub-techniques: T1562.001 (Impair Defenses: Disable or Modify Tools), T1070.001 (Indicator Removal: Clear Windows Event Logs).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/suspicious-powershell/README.md
+severity: High
+enabled: true
+queryFrequency: PT1H
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [DefenseEvasion]
+techniques: [T1562, T1070]
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: HostName
+  - entityType: Account
+    fieldMappings:
+      - identifier: AadUserId
+        columnName: AccountObjectId
+      - identifier: FullName
+        columnName: AccountUpn
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes: [DeviceProcessEvents]
+requiredTables: [DeviceProcessEvents]
+sourceRule: ../powershell-defender-tampering.kql
+query: |
+  // Tuning: exclude your deployment tooling if it sets Defender preferences during builds
+  DeviceProcessEvents
+  | where FileName in~ ("powershell.exe", "pwsh.exe")
+  | where ProcessCommandLine has_any ("AmsiUtils", "amsiInitFailed", "AmsiScanBuffer",
+                                      "DisableRealtimeMonitoring", "DisableIOAVProtection", "DisableBehaviorMonitoring",
+                                      "Add-MpPreference", "Remove-MpPreference", "ExclusionPath", "ExclusionProcess",
+                                      "Clear-EventLog", "Remove-EventLog", "wevtutil cl")
+  | extend HostName = tostring(split(DeviceName, ".")[0])    // FQDN -> short name for the Host entity
+  | project TimeGenerated, DeviceId, DeviceName, HostName, AccountObjectId, AccountUpn, AccountName,
+            InitiatingProcessFileName, InitiatingProcessCommandLine, ProcessCommandLine

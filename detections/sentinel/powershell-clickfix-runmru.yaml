@@ -1,0 +1,45 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: 6317a905-54cc-59d1-8f03-bb4d5c0e1d36
+name: "PowerShell: ClickFix command typed or pasted into the Run dialog"
+description: |
+  Windows saved a Run dialog (Win+R) entry in the RunMRU registry key that contains a script engine or
+  download command (powershell, mshta, curl, iex, http, certutil and similar). ClickFix and fake-CAPTCHA
+  lures trick users into pasting exactly this kind of command.
+  MITRE sub-techniques: T1204.004 (User Execution: Malicious Copy and Paste), T1059.001 (Command and Scripting Interpreter: PowerShell).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/suspicious-powershell/README.md
+severity: High
+enabled: true
+queryFrequency: PT1H
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [Execution]
+techniques: [T1204, T1059]
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: HostName
+  - entityType: Account
+    fieldMappings:
+      - identifier: AadUserId
+        columnName: InitiatingProcessAccountObjectId
+      - identifier: FullName
+        columnName: InitiatingProcessAccountUpn
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes: [DeviceRegistryEvents]
+requiredTables: [DeviceRegistryEvents]
+sourceRule: ../powershell-clickfix-runmru.kql
+query: |
+  // Tuning: IT staff may run powershell/cmd from Run; exclude admin accounts if noisy, but keep "http"/"iex" matches
+  DeviceRegistryEvents
+  | where RegistryKey has @"\CurrentVersion\Explorer\RunMRU"
+  | where RegistryValueData has_any ("powershell", "pwsh", "mshta", "curl", "iex", "http", "cmd /c", "cmd.exe /c",
+                                     "msiexec", "bitsadmin", "certutil", "rundll32", "wscript")
+  | extend HostName = tostring(split(DeviceName, ".")[0])    // FQDN -> short name for the Host entity
+  // InitiatingProcessAccountUpn is added (it exists in the Sentinel table) so the Account entity gets a UPN too.
+  | project TimeGenerated, DeviceId, DeviceName, HostName, InitiatingProcessAccountObjectId, InitiatingProcessAccountUpn,
+            Account = InitiatingProcessAccountName, RegistryValueName, RegistryValueData

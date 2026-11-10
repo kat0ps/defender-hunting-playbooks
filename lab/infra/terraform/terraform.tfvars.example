@@ -1,0 +1,24 @@
+# terraform.tfvars.example: copy to terraform.tfvars and edit. terraform.tfvars is git-ignored.
+# No secrets, tenant IDs or subscription IDs belong in this file (set ARM_SUBSCRIPTION_ID instead).
+
+location       = "southafricanorth"
+name_prefix    = "sentinel-lab"
+daily_quota_gb = 1
+
+# Step 1: leave empty. Terraform creates the workspace and Sentinel with no rules.
+available_tables = []
+
+# Step 2: as each connector starts sending data, uncomment its tables (check Sentinel -> Logs first).
+# available_tables = [
+#   "SigninLogs",                       # Microsoft Entra ID connector
+#   "AADNonInteractiveUserSignInLogs",  # Microsoft Entra ID connector
+#   "OfficeActivity",                   # Microsoft 365 (formerly Office 365) connector
+#   "DeviceProcessEvents",              # Microsoft Defender XDR connector (raw events)
+#   "DeviceRegistryEvents",             # Microsoft Defender XDR connector (raw events)
+#   "EmailEvents",                      # Microsoft Defender XDR connector (raw events)
+#   "EmailPostDeliveryEvents",          # Microsoft Defender XDR connector (raw events)
+#   "UrlClickEvents",                   # Microsoft Defender XDR connector (raw events)
+# ]
+
+# Step 3: deploy one rule at a time while learning. Remove the line (or set null) for all rules.
+enabled_rules = ["legacy-auth-success"]

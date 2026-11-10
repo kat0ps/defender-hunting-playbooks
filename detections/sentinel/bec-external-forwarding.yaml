@@ -1,0 +1,55 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: 2429d40c-255b-543b-b2ac-b5eeefc6dbad
+name: "BEC: mail forwarded or redirected to an external domain"
+description: |
+  A mailbox forwarding setting, inbox rule or transport rule now sends mail to a domain you don't own.
+  Attackers use this to keep reading a victim's mail after they lose access to the account.
+  MITRE sub-techniques: T1114.003 (Email Collection: Email Forwarding Rule).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/business-email-compromise/README.md
+severity: High
+enabled: true
+queryFrequency: PT1H
+queryPeriod: PT1H
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [Collection]
+techniques: [T1114]
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserId
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: ClientIPAddress
+requiredDataConnectors:
+  - connectorId: Office365
+    dataTypes: [OfficeActivity]
+requiredTables: [OfficeActivity]
+sourceRule: ../bec-external-forwarding.kql
+query: |
+  // Tuning: set internalDomains to every accepted domain you own; add approved external partners if needed
+  let internalDomains = dynamic(["yourdomain.com"]);
+  // CloudAppEvents.ActionType -> OfficeActivity.Operation (same Exchange cmdlet names).
+  OfficeActivity
+  | where Operation in ("Set-Mailbox", "New-TransportRule", "Set-TransportRule", "New-InboxRule", "Set-InboxRule")
+  // RawEventData.Parameters -> Parameters (a JSON string of {Name, Value} pairs). Parse it and keep
+  // the first parameter that forwards, redirects or BCCs mail.
+  | mv-apply p = todynamic(Parameters) on (
+        where tostring(p.Name) in ("ForwardingSmtpAddress", "ForwardingAddress", "RedirectMessageTo", "BlindCopyTo",
+                                   "ForwardTo", "RedirectTo", "ForwardAsAttachmentTo")
+        | summarize ForwardTo = take_any(tostring(p.Value)))
+  | where isnotempty(ForwardTo)
+  | extend ForwardDomain = tolower(extract(@'@([A-Za-z0-9.-]+)', 1, ForwardTo))
+  | where isnotempty(ForwardDomain) and not(ForwardDomain in~ (internalDomains))
+  // RawEventData.ObjectId -> OfficeObjectId: the mailbox or rule that was changed.
+  | extend TargetMailbox = OfficeObjectId
+  // Strip the port from ClientIP; CountryCode and ISP have no OfficeActivity equivalent.
+  | extend ClientIPAddress = case(
+        ClientIP has ".", tostring(split(ClientIP, ":")[0]),
+        ClientIP has "[", tostring(trim_start(@"\[", tostring(split(ClientIP, "]")[0]))),
+        ClientIP)
+  | project TimeGenerated, UserId, Operation, TargetMailbox, ForwardTo, ForwardDomain, ClientIPAddress, ResultStatus

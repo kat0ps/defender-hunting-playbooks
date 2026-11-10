@@ -1,0 +1,79 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: 3a9abe4e-f8f8-5cad-aa67-130a153d8395
+name: "AiTM: email link click, then a sign-in from a never-seen IP"
+description: |
+  A user clicks a link in an email (Safe Links allowed it or they clicked through a warning), and within
+  30 minutes their account signs in successfully from an IP it hasn't used in the previous 13 days.
+  This is the classic adversary-in-the-middle pattern: the phishing proxy relays the login and then replays
+  the stolen session from its own infrastructure.
+  MITRE sub-techniques: T1566.002 (Phishing: Spearphishing Link).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/aitm-token-theft/README.md
+severity: High
+enabled: true
+# Daily run over 14 days. 14 days is the longest lookback a Sentinel scheduled rule allows (the Defender
+# version used a 30-day baseline). The query restricts the clicks and new sign-ins to the last day and
+# uses the older 13 days as the "known IPs" baseline.
+queryFrequency: P1D
+queryPeriod: P14D
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [InitialAccess, CredentialAccess]
+techniques: [T1566, T1557, T1539]
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: AadUserId
+        columnName: UserId
+      - identifier: FullName
+        columnName: UserPrincipalName
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: SignInIP
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: ClickIP
+  - entityType: URL
+    fieldMappings:
+      - identifier: Url
+        columnName: Url
+requiredDataConnectors:
+  - connectorId: AzureActiveDirectory
+    dataTypes: [SigninLogs, AADNonInteractiveUserSignInLogs]
+  - connectorId: MicrosoftThreatProtection
+    dataTypes: [UrlClickEvents]
+requiredTables: [UrlClickEvents, SigninLogs, AADNonInteractiveUserSignInLogs]
+sourceRule: ../aitm-click-then-new-ip-signin.kql
+query: |
+  // Tuning: exclude your own office egress IPs; expect some noise from users on new home/mobile networks
+  let lookback = 1d;          // = queryFrequency: the clicks and sign-ins we alert on
+  let baselineStart = 14d;    // = queryPeriod. Sentinel's maximum; the Defender version used 30d.
+  let window = 30m;
+  // Kept explicit on purpose: this rule needs two time ranges (the last day + the 13-day baseline),
+  // so it can't rely on queryPeriod alone.
+  let SignIns = union
+          (SigninLogs
+              | extend Loc = LocationDetails),
+          (AADNonInteractiveUserSignInLogs
+              | extend Loc = parse_json(LocationDetails))    // string column in this table
+      | where ResultType == "0"                              // ErrorCode -> ResultType (string)
+      | extend Upn = tolower(UserPrincipalName), Country = tostring(Loc.countryOrRegion);
+  let clicks = UrlClickEvents
+      | where TimeGenerated > ago(lookback)
+      | where ActionType == "ClickAllowed" or IsClickedThrough == true
+      | project ClickTime = TimeGenerated, Upn = tolower(AccountUpn), Url, ClickIP = IPAddress, NetworkMessageId;
+  let baseline = SignIns
+      | where TimeGenerated between (ago(baselineStart) .. ago(lookback))
+      | distinct Upn, IPAddress;
+  SignIns
+  | where TimeGenerated > ago(lookback)
+  | join kind=inner clicks on Upn
+  | where TimeGenerated between (ClickTime .. (ClickTime + window))
+  | join kind=leftanti baseline on Upn, IPAddress
+  | summarize arg_min(TimeGenerated, IPAddress, Country, AppDisplayName, UserAgent)
+              by UserId, UserPrincipalName, ClickTime, Url, ClickIP, NetworkMessageId
+  | project TimeGenerated, UserId, UserPrincipalName, ClickTime, Url, ClickIP,
+            SignInIP = IPAddress, Country, AppDisplayName, UserAgent, NetworkMessageId

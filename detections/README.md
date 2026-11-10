@@ -6,24 +6,28 @@ Every query returns the columns a custom detection needs: **`Timestamp`**, **`Re
 
 ## Rules
 
-| Rule | Playbook | Severity | Frequency | MITRE | Status |
-|---|---|---|---|---|---|
-| [Impossible travel](impossible-travel.kql) | [Impossible travel](../playbooks/impossible-travel/README.md) | Medium | 24h | T1078.004 | Logic validated, rule untested |
-| [AiTM: automation user agent sign-in](aitm-automation-useragent-signin.kql) | [AiTM / token theft](../playbooks/aitm-token-theft/README.md) | High | 1h | T1557, T1550.004 | Untested |
-| [AiTM: click, then new-IP sign-in](aitm-click-then-new-ip-signin.kql) | [AiTM / token theft](../playbooks/aitm-token-theft/README.md) | High | 24h | T1566.002, T1557, T1539 | Untested |
-| [AiTM: session replay with user agent change](aitm-session-replay-useragent-change.kql) | [AiTM / token theft](../playbooks/aitm-token-theft/README.md) | High | 24h | T1539, T1550.004 | Untested |
-| [Password spray: password correct or signed in](password-spray-compromise.kql) | [Password spray](../playbooks/password-spray/README.md) | High | 3h | T1110.003, T1078.004 | Untested |
-| [Legacy authentication success](legacy-auth-success.kql) | [Password spray](../playbooks/password-spray/README.md) | Medium | 1h | T1078.004 | Untested |
-| [BEC: high-risk inbox rule](bec-suspicious-inbox-rule.kql) | [BEC](../playbooks/business-email-compromise/README.md) | High | 1h | T1564.008, T1114.003 | Untested |
-| [BEC: external forwarding](bec-external-forwarding.kql) | [BEC](../playbooks/business-email-compromise/README.md) | High | 1h | T1114.003 | Untested |
-| [BEC: VIP display name impersonation](bec-vip-impersonation.kql) | [BEC](../playbooks/business-email-compromise/README.md) | Medium | 1h | T1656 | Untested |
-| [Phishing: malicious URL click](phishing-malicious-url-click.kql) | [Phishing triage](../playbooks/phishing-triage/README.md) / [User-reported email](../playbooks/user-reported-email/README.md) | High | 1h | T1204.001, T1566.002 | Untested |
-| [PowerShell: Office spawning script engines](powershell-office-child-process.kql) | [Suspicious PowerShell](../playbooks/suspicious-powershell/README.md) | High | 1h / NRT | T1204.002, T1059.001 | Untested |
-| [PowerShell: encoded download/execute](powershell-encoded-download.kql) | [Suspicious PowerShell](../playbooks/suspicious-powershell/README.md) | High | 1h | T1059.001, T1027.010, T1105 | Untested |
-| [PowerShell: ClickFix (Run dialog)](powershell-clickfix-runmru.kql) | [Suspicious PowerShell](../playbooks/suspicious-powershell/README.md) | High | 1h / NRT | T1204.004 | Untested |
-| [PowerShell: Defender/AMSI tampering](powershell-defender-tampering.kql) | [Suspicious PowerShell](../playbooks/suspicious-powershell/README.md) | High | 1h | T1562.001, T1070.001 | Untested |
+| Rule | Sentinel version | Playbook | Severity | Frequency | MITRE | Status |
+|---|---|---|---|---|---|---|
+| [Impossible travel](impossible-travel.kql) | [YAML](sentinel/impossible-travel.yaml) | [Impossible travel](../playbooks/impossible-travel/README.md) | Medium | 24h | T1078.004 | Logic validated, rule untested |
+| [AiTM: automation user agent sign-in](aitm-automation-useragent-signin.kql) | [YAML](sentinel/aitm-automation-useragent-signin.yaml) | [AiTM / token theft](../playbooks/aitm-token-theft/README.md) | High | 1h | T1557, T1550.004 | Untested |
+| [AiTM: click, then new-IP sign-in](aitm-click-then-new-ip-signin.kql) | [YAML](sentinel/aitm-click-then-new-ip-signin.yaml) | [AiTM / token theft](../playbooks/aitm-token-theft/README.md) | High | 24h | T1566.002, T1557, T1539 | Untested |
+| [AiTM: session replay with user agent change](aitm-session-replay-useragent-change.kql) | [YAML](sentinel/aitm-session-replay-useragent-change.yaml) | [AiTM / token theft](../playbooks/aitm-token-theft/README.md) | High | 24h | T1539, T1550.004 | Untested |
+| [Password spray: password correct or signed in](password-spray-compromise.kql) | [YAML](sentinel/password-spray-compromise.yaml) | [Password spray](../playbooks/password-spray/README.md) | High | 3h | T1110.003, T1078.004 | Untested |
+| [Legacy authentication success](legacy-auth-success.kql) | [YAML](sentinel/legacy-auth-success.yaml) | [Password spray](../playbooks/password-spray/README.md) | Medium | 1h | T1078.004 | Untested |
+| [BEC: high-risk inbox rule](bec-suspicious-inbox-rule.kql) | [YAML](sentinel/bec-suspicious-inbox-rule.yaml) | [BEC](../playbooks/business-email-compromise/README.md) | High | 1h | T1564.008, T1114.003 | Untested |
+| [BEC: external forwarding](bec-external-forwarding.kql) | [YAML](sentinel/bec-external-forwarding.yaml) | [BEC](../playbooks/business-email-compromise/README.md) | High | 1h | T1114.003 | Untested |
+| [BEC: VIP display name impersonation](bec-vip-impersonation.kql) | [YAML](sentinel/bec-vip-impersonation.yaml) | [BEC](../playbooks/business-email-compromise/README.md) | Medium | 1h | T1656 | Untested |
+| [Phishing: malicious URL click](phishing-malicious-url-click.kql) | [YAML](sentinel/phishing-malicious-url-click.yaml) | [Phishing triage](../playbooks/phishing-triage/README.md) / [User-reported email](../playbooks/user-reported-email/README.md) | High | 1h | T1204.001, T1566.002 | Untested |
+| [PowerShell: Office spawning script engines](powershell-office-child-process.kql) | [YAML](sentinel/powershell-office-child-process.yaml) | [Suspicious PowerShell](../playbooks/suspicious-powershell/README.md) | High | 1h / NRT | T1204.002, T1059.001 | Untested |
+| [PowerShell: encoded download/execute](powershell-encoded-download.kql) | [YAML](sentinel/powershell-encoded-download.yaml) | [Suspicious PowerShell](../playbooks/suspicious-powershell/README.md) | High | 1h | T1059.001, T1027.010, T1105 | Untested |
+| [PowerShell: ClickFix (Run dialog)](powershell-clickfix-runmru.kql) | [YAML](sentinel/powershell-clickfix-runmru.yaml) | [Suspicious PowerShell](../playbooks/suspicious-powershell/README.md) | High | 1h / NRT | T1204.004 | Untested |
+| [PowerShell: Defender/AMSI tampering](powershell-defender-tampering.kql) | [YAML](sentinel/powershell-defender-tampering.yaml) | [Suspicious PowerShell](../playbooks/suspicious-powershell/README.md) | High | 1h | T1562.001, T1070.001 | Untested |
 
 > The user-reported email playbook is triggered by Microsoft's built-in *Email reported by user as malware or phish* alert, so it has no separate rule. The malicious URL click rule covers the follow-up risk.
+
+## Sentinel versions
+
+Each rule also has a Microsoft Sentinel scheduled analytics rule in [`sentinel/`](sentinel/), deployed by Terraform from the [lab](../lab/README.md). The fields are documented in [sentinel/schema.md](sentinel/schema.md).
 
 ## Deploying a rule
 

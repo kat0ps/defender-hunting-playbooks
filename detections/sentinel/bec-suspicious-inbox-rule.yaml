@@ -1,0 +1,65 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: 616dc863-6065-5470-89eb-980988d5b4e8
+name: "BEC: high-risk inbox rule created or changed"
+description: |
+  An inbox rule that forwards, deletes, marks as read or hides mail (moves it to RSS Feeds, Conversation
+  History or Archive), scored higher when it matches finance keywords or has a meaningless 1-3 character
+  name. After taking over a mailbox, BEC attackers create rules like this to hide replies from the real user.
+  MITRE sub-techniques: T1564.008 (Hide Artifacts: Email Hiding Rules), T1114.003 (Email Collection: Email Forwarding Rule).
+  Playbook: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/business-email-compromise/README.md
+severity: High
+enabled: true
+queryFrequency: PT1H
+queryPeriod: PT1H    # = frequency, so each rule change alerts once
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [DefenseEvasion, Collection]
+techniques: [T1564, T1114]
+entityMappings:
+  # OfficeActivity has no Entra object ID column; UserId holds the UPN, so map it as FullName.
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: UserId
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: ClientIPAddress
+requiredDataConnectors:
+  - connectorId: Office365
+    dataTypes: [OfficeActivity]
+requiredTables: [OfficeActivity]
+sourceRule: ../bec-suspicious-inbox-rule.kql
+query: |
+  // Tuning: raise the RiskScore threshold if users' own filing rules trigger it
+  let financeWords = dynamic(["invoice", "payment", "bank", "banking", "eft", "remittance", "proof of payment",
+                              "wire", "swift", "beneficiary", "account details", "statement of account"]);
+  // Defender CloudAppEvents (ActionType + RawEventData) -> Sentinel OfficeActivity (Operation + Parameters).
+  OfficeActivity
+  | where Operation in ("New-InboxRule", "Set-InboxRule", "UpdateInboxRules")
+  // New-/Set-InboxRule: the cmdlet parameters are a JSON array in Parameters (string column).
+  // UpdateInboxRules (rules made in the Outlook client) carries its details in OperationProperties instead.
+  // TODO: verify column contents of OperationProperties for UpdateInboxRules in your tenant.
+  | extend RawText = strcat(Parameters, " ", tostring(OperationProperties))
+  // Read the rule name by parsing the JSON instead of a regex, so spacing differences don't break it.
+  | mv-apply p = todynamic(Parameters) on (
+        summarize RuleName = take_anyif(tostring(p.Value), tostring(p.Name) == "Name"))
+  | extend Forwards = RawText has_any ("ForwardTo", "ForwardAsAttachmentTo", "RedirectTo"),
+           Deletes = RawText has_any ("DeleteMessage", "SoftDeleteMessage"),
+           MarksRead = RawText has "MarkAsRead",
+           HidesMail = RawText has_any ("RSS Feeds", "RSS Subscriptions", "Conversation History", "Archive"),
+           FinanceKeywords = RawText has_any (financeWords),
+           ShortName = isnotempty(RuleName) and strlen(trim(@"\s", RuleName)) <= 3
+  | extend RiskScore = 2 * toint(Forwards) + 2 * toint(Deletes) + toint(MarksRead) + toint(HidesMail)
+                     + 2 * toint(FinanceKeywords) + 2 * toint(ShortName)
+  | where RiskScore >= 4
+  // ClientIP can include a port ("203.0.113.5:51234" or "[2001:db8::1]:443"). Strip it so the IP entity
+  // and IP enrichment work. CountryCode and ISP (Defender columns) don't exist in OfficeActivity, so they are dropped.
+  | extend ClientIPAddress = case(
+        ClientIP has ".", tostring(split(ClientIP, ":")[0]),
+        ClientIP has "[", tostring(trim_start(@"\[", tostring(split(ClientIP, "]")[0]))),
+        ClientIP)
+  | project TimeGenerated, UserId, Operation, RuleName, RiskScore,
+            Forwards, Deletes, MarksRead, HidesMail, FinanceKeywords, ShortName, ClientIPAddress, ResultStatus

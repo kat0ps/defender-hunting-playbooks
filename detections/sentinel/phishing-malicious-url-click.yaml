@@ -1,0 +1,61 @@
+# Sentinel scheduled analytics rule, converted from the Defender XDR rule in sourceRule.
+# Terraform (lab/infra/terraform/modules/sentinel) turns this file into one
+# azurerm_sentinel_alert_rule_scheduled resource. Every field is explained in schema.md.
+id: ff1a6bc2-0cb5-5cbc-859a-079b92b97074
+name: "Phishing: user reached a malicious or warned URL"
+description: |
+  A user's click was allowed to a URL that Safe Links flagged, the user clicked through a Safe Links
+  warning, or the link came from an email that was flagged as a threat or later removed by ZAP.
+  Find out what the user did on that page, for example whether they entered credentials or ran a download.
+  MITRE sub-techniques: T1204.001 (User Execution: Malicious Link), T1566.002 (Phishing: Spearphishing Link).
+  Playbooks: https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/phishing-triage/README.md
+  and https://github.com/kat0ps/defender-hunting-playbooks/blob/main/playbooks/user-reported-email/README.md
+severity: High
+enabled: true
+# Runs hourly over 7 days. The 7 days are only used to look up email verdicts and ZAP actions; the
+# clicks themselves are restricted to the last hour in the query (one alert per click).
+queryFrequency: PT1H
+queryPeriod: P7D
+triggerOperator: GreaterThan
+triggerThreshold: 0
+tactics: [Execution, InitialAccess]
+techniques: [T1204, T1566]
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: AccountUpn
+  - entityType: URL
+    fieldMappings:
+      - identifier: Url
+        columnName: Url
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: IPAddress
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes: [UrlClickEvents, EmailEvents, EmailPostDeliveryEvents]
+requiredTables: [UrlClickEvents, EmailEvents, EmailPostDeliveryEvents]
+sourceRule: ../phishing-malicious-url-click.kql
+query: |
+  // Trade-off: the Defender version re-checked 4h of clicks so a ZAP that happened after the click was
+  // still caught. Sentinel doesn't de-duplicate alerts, so this version checks each click once (1h).
+  // A click whose email is ZAPped more than an hour later will be missed. Widen clickWindow if you'd
+  // rather accept duplicate alerts than miss those.
+  let clickWindow = 1h;   // = queryFrequency
+  // The 7-day lookups below are explicit on purpose; they need the full queryPeriod.
+  let threatEmails = EmailEvents
+      | where isnotempty(ThreatTypes)
+      | project NetworkMessageId, EmailThreat = ThreatTypes;
+  let zapped = EmailPostDeliveryEvents
+      | where ActionType has "ZAP"
+      | project NetworkMessageId, PostDeliveryAction = ActionType;
+  UrlClickEvents
+  | where TimeGenerated > ago(clickWindow)
+  | where ActionType == "ClickAllowed" or IsClickedThrough == true
+  | join kind=leftouter (threatEmails | distinct NetworkMessageId, EmailThreat) on NetworkMessageId
+  | join kind=leftouter (zapped | distinct NetworkMessageId, PostDeliveryAction) on NetworkMessageId
+  | where isnotempty(ThreatTypes) or IsClickedThrough == true or isnotempty(EmailThreat) or isnotempty(PostDeliveryAction)
+  | project TimeGenerated, AccountUpn, Url, IPAddress, ActionType, IsClickedThrough,
+            ClickThreat = ThreatTypes, EmailThreat, PostDeliveryAction, Workload, NetworkMessageId

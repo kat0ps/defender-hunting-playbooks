@@ -1,0 +1,47 @@
+# lab-validate: fast, offline checks on every pull request that touches the lab or the Sentinel rules.
+# It needs no Azure credentials: the YAML check is plain Python, and `terraform validate` runs with
+# -backend=false, so nothing is read from or written to Azure.
+name: lab-validate
+
+on:
+  pull_request:
+    paths:
+      - "lab/**"
+      - "detections/sentinel/**"
+      - ".github/workflows/lab-validate.yml"
+
+# Least privilege: this workflow only reads the code.
+permissions:
+  contents: read
+
+jobs:
+  detections:
+    name: Validate Sentinel rule YAML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Check every rule file
+        run: python3 lab/scripts/validate_detections.py
+
+  terraform:
+    name: Terraform fmt and validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lab/infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      # Fails if any file isn't in canonical format (fix locally with `terraform fmt -recursive`).
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      # Downloads the providers only; no state backend, so no Azure login is needed.
+      - name: terraform init
+        run: terraform init -backend=false -input=false
+      - name: terraform validate
+        run: terraform validate -no-color
