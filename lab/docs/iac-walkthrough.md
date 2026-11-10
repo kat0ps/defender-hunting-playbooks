@@ -97,13 +97,10 @@ git --version
 ```powershell
 git clone https://github.com/kat0ps/defender-hunting-playbooks
 cd defender-hunting-playbooks
-git fetch origin
-git checkout lab/sentinel-detections-as-code
 pip install pyyaml
-mkdir -Force lab/evidence/lab-setup
 ```
 
-You are now in the **repo root**. If you already have the repo cloned, `cd` into it and run only the last four lines.
+You are now in the **repo root**, on the `main` branch, which already contains the lab code. If you cloned the repo earlier, `cd` into it and run `git checkout main` then `git pull` instead of `git clone`, so you get the latest files.
 
 📍 **VS Code**: **File → Open Folder** → select `defender-hunting-playbooks`. From now on use the terminal inside VS Code (**Terminal → New Terminal**); it opens in the repo root.
 
@@ -304,19 +301,30 @@ terraform output
 
 ```powershell
 cd ../../..
+git checkout -b lab/evidence-lab-setup
+git pull origin main
 git status
 git add lab/infra/terraform/.terraform.lock.hcl lab/evidence/lab-setup
 git commit -m "Lab: add provider lock file and IaC deployment evidence"
-git push
+git push -u origin lab/evidence-lab-setup
 ```
 
-`git status` should list only the lock file and your screenshots as new. `terraform.tfvars`, `tfplan` and the `.terraform` folder must not appear in `git add`; if `tfplan` shows up, leave it out.
+- `git checkout -b` creates a new branch (a draft) for this change, so it goes through a pull request instead of straight onto `main`.
+- `git pull origin main` brings down any screenshots that were already added to GitHub for you.
+- `git status` should list only the lock file and your screenshots as new. `terraform.tfvars`, `tfplan` and the `.terraform` folder must never be added; the `.gitignore` file already hides them.
 
-📍 **GitHub** (browser): open **Pull requests** → the open pull request → scroll to the checks box at the bottom and wait for `lab-validate` to go green.
+📍 **GitHub** (browser): a yellow banner says your branch had recent pushes. Click **Compare & pull request** → **Create pull request**. Scroll to the checks box at the bottom and wait for both `lab-validate` checks to go green.
 
 📸 `11-pr-checks-green.png`: the **browser** showing the pull request's checks passing.
 
-When you are happy with it, click **Merge pull request** on that same page.
+When you are happy with it, click **Merge pull request** on that same page, then **Confirm merge**.
+
+📍 **Terminal** (repo root): bring your computer back in line with GitHub:
+
+```powershell
+git checkout main
+git pull
+```
 
 ## 9. Stretch: deploy your first rule (needs data, so probably tomorrow)
 
