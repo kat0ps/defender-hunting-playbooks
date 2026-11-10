@@ -1,0 +1,19 @@
+// Step 3: the same sender/subject reported by several users (active campaign signal)
+let lookback = 7d;
+AlertInfo
+| where Timestamp > ago(lookback)
+| where Title has_any ("reported by user", "User reported")
+| join kind=inner (
+    AlertEvidence
+    | where EntityType == "MailMessage" and isnotempty(NetworkMessageId)
+    | project AlertId, NetworkMessageId
+  ) on AlertId
+| join kind=inner (
+    EmailEvents
+    | where Timestamp > ago(30d)
+    | project NetworkMessageId, SenderFromAddress, Subject, Reporter = RecipientEmailAddress
+  ) on NetworkMessageId
+| summarize Reports = dcount(AlertId), ReporterCount = dcount(Reporter), Reporters = make_set(Reporter, 50),
+            FirstReport = min(Timestamp), LastReport = max(Timestamp)
+            by SenderFromAddress, Subject
+| sort by ReporterCount desc, LastReport desc

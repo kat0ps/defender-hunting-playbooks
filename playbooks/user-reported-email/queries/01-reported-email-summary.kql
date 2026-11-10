@@ -1,0 +1,40 @@
+// Step 1: one-row triage summary per user-reported email
+// Sender, authentication, delivery, URL domains, attachments, campaign size and who clicked
+let lookback = 7d;
+let reported = AlertInfo
+    | where Timestamp > ago(lookback)
+    | where Title has_any ("reported by user", "User reported")
+    | join kind=inner (
+        AlertEvidence
+        | where EntityType == "MailMessage" and isnotempty(NetworkMessageId)
+        | project AlertId, NetworkMessageId
+      ) on AlertId
+    | distinct AlertId, AlertTime = Timestamp, Title, Severity, NetworkMessageId;
+reported
+| join kind=leftouter (
+    EmailEvents
+    | where Timestamp > ago(30d)
+    | project NetworkMessageId, SenderFromAddress, SenderFromDomain, SenderIPv4, Reporter = RecipientEmailAddress,
+              Subject, DeliveryAction, LatestDeliveryLocation, ThreatTypes, AuthenticationDetails
+  ) on NetworkMessageId
+| join kind=leftouter (
+    EmailUrlInfo | summarize UrlDomains = make_set(UrlDomain, 10) by NetworkMessageId
+  ) on NetworkMessageId
+| join kind=leftouter (
+    EmailAttachmentInfo | summarize Attachments = make_set(FileName, 10), Hashes = make_set(SHA256, 10) by NetworkMessageId
+  ) on NetworkMessageId
+| join kind=leftouter (
+    EmailEvents
+    | where Timestamp > ago(30d)
+    | summarize CampaignRecipients = dcount(RecipientEmailAddress) by SenderFromAddress, Subject
+  ) on SenderFromAddress, Subject
+| join kind=leftouter (
+    UrlClickEvents
+    | where Timestamp > ago(30d)
+    | where ActionType == "ClickAllowed" or IsClickedThrough == true
+    | summarize Clickers = make_set(AccountUpn, 20) by NetworkMessageId
+  ) on NetworkMessageId
+| project AlertTime, Title, Severity, Reporter, SenderFromAddress, SenderFromDomain, SenderIPv4, Subject,
+          DeliveryAction, LatestDeliveryLocation, ThreatTypes, AuthenticationDetails,
+          UrlDomains, Attachments, Hashes, CampaignRecipients, Clickers, NetworkMessageId, AlertId
+| sort by AlertTime desc

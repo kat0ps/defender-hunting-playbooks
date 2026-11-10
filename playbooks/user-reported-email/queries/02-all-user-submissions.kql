@@ -1,0 +1,12 @@
+// Step 2: every Report-button submission, including ones that didn't raise an alert
+// Field names inside RawEventData vary by tenant: if Subject/Sender are empty, expand RawEventData on one row and adjust
+let lookback = 7d;
+CloudAppEvents
+| where Timestamp > ago(lookback)
+| where ActionType in ("UserSubmission", "UserSubmissionTriage", "AdminSubmission")
+| extend Raw = parse_json(RawEventData)
+| project Timestamp, ActionType, Reporter = AccountDisplayName,
+          Subject = tostring(Raw.Subject),
+          Sender = coalesce(tostring(Raw.P1Sender), tostring(Raw.P2Sender), tostring(Raw.Sender)),
+          SubmissionType = tostring(Raw.SubmissionType), RawEventData
+| sort by Timestamp desc

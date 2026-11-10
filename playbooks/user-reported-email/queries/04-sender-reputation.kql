@@ -1,0 +1,16 @@
+// Step 4: sender domain reputation in your tenant over 30 days
+// New domain (FirstSeen recent), few emails, DMARC failures or prior threat verdicts = suspicious
+// Established domain with months of clean, authenticated mail = likely legitimate (or a compromised partner if the request is unusual)
+let senderDomain = "example.com";
+EmailEvents
+| where Timestamp > ago(30d)
+| where SenderFromDomain =~ senderDomain
+| extend Auth = parse_json(AuthenticationDetails)
+| summarize Emails = count(), Recipients = dcount(RecipientEmailAddress),
+            FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            Senders = make_set(SenderFromAddress, 10), SenderIPs = make_set(SenderIPv4, 10),
+            WithThreatVerdict = countif(isnotempty(ThreatTypes)),
+            Delivered = countif(DeliveryAction == "Delivered"), Blocked = countif(DeliveryAction in ("Blocked", "Junked")),
+            DmarcFail = countif(tostring(Auth.DMARC) =~ "fail"), CompAuthFail = countif(tostring(Auth.CompAuth) =~ "fail"),
+            Directions = make_set(EmailDirection)
+            by SenderFromDomain

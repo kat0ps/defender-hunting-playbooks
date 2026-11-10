@@ -6,6 +6,8 @@
 
 ---
 
+> **Starting from a user report?** Run the [user-reported email playbook](../user-reported-email/README.md) first for a quick benign-or-malicious verdict, then come back here if it's malicious.
+
 ## The four questions
 
 1. **What is it?** Sender, authentication results, URLs, attachments
