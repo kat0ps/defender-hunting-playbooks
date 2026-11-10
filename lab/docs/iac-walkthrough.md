@@ -4,6 +4,7 @@ Follow this top to bottom. By the end you will have deployed a Log Analytics wor
 
 - 📍 says **where** you do the step: which app, and for terminal steps, which folder.
 - 📸 marks a screenshot, with the window to capture and the file name to use.
+- 💡 explains the step in plain words, with an everyday comparison. Read it before you run anything.
 - 🗣 marks how to explain the step to someone else.
 
 **Status of the code:** `terraform fmt` and `terraform validate` pass in the `lab-validate` GitHub Actions check. The KQL in the rules has not yet been run against a real workspace, so run each query in Sentinel Logs before enabling its rule.
@@ -20,6 +21,43 @@ Follow this top to bottom. By the end you will have deployed a Log Analytics wor
 | **GitHub** | Your browser at <https://github.com/kat0ps/defender-hunting-playbooks> | Sign in as `kat0ps` |
 | **Evidence folder** | `lab/evidence/lab-setup/` inside the repo | Create it in step 1; save every screenshot there |
 
+## Plain-English dictionary
+
+You don't need to memorise this. Come back to it whenever a word is unclear.
+
+**The big picture:** think of a shopping centre's security office. Cameras all over the building send footage to a recording room. A guard watches the recordings and follows written instructions such as "if someone opens the back door after midnight, raise the alarm". This lab builds that security office in Azure, for computer logs instead of camera footage. And instead of building it by clicking, you hand a builder a written plan.
+
+| Word | In plain words | Everyday comparison |
+|---|---|---|
+| **Azure** | Microsoft's cloud: computers and services you rent over the internet | A building where you rent rooms instead of buying your own |
+| **Subscription** | The account that everything you create is billed to | Your electricity account |
+| **Resource** | Any single thing you create in Azure | One appliance plugged in at home |
+| **Resource group** | A container that holds related resources | A box you pack things into; throw away the box and everything in it goes |
+| **Log** | A record that something happened: "Kat signed in at 20:15 from this address" | One line in a visitors' book |
+| **Log Analytics workspace** | The place in Azure where logs are stored and searched | The recording room and its filing cabinet |
+| **Table** | One kind of log inside the workspace, for example `SigninLogs` | One drawer in the filing cabinet |
+| **Data connector** | The link that sends logs from a source (such as Entra ID sign-ins) into the workspace | The cable from a camera to the recording room |
+| **Microsoft Sentinel** | The security tool that sits on the workspace, watches the logs and raises alerts. This kind of tool is called a SIEM | The guard watching the recordings |
+| **Analytics rule** | A saved search that runs on a timer and creates an alert when it finds something | One written instruction for the guard |
+| **KQL** | The language used to search the logs | The way you phrase a question to the filing clerk |
+| **Incident** | The case Sentinel opens when a rule finds something | The guard's incident report |
+| **IaC (infrastructure as code)** | Describing what you want built in text files, instead of clicking in the portal | A written building plan instead of telling the builder as you go |
+| **Terraform** | The tool that reads those files and builds what they describe | The builder |
+| **Provider** | A plugin that teaches Terraform how to talk to one platform, here Azure | The builder's set of tools for one type of job |
+| **`terraform init`** | Gets Terraform ready: downloads the providers and connects to the state | The builder unpacking tools on site |
+| **`terraform plan`** | Shows what would be created, changed or deleted. Changes nothing | A quote: "here is what I will do" |
+| **`terraform apply`** | Actually makes the changes in Azure | The builder doing the work |
+| **`terraform destroy`** | Deletes everything Terraform built | Demolition |
+| **State** | Terraform's own record of what it has built | The builder's notebook, so they know what already exists |
+| **Module** | A reusable bundle of Terraform files with settings going in and results coming out | A flat-pack kit with its own instruction sheet |
+| **Variable** | A setting you can change without editing the code | A blank on a form |
+| **Output** | A value Terraform prints when it finishes | The receipt |
+| **YAML** | A simple text format of `name: value` lines. Each detection rule is one YAML file | A filled-in form |
+| **Git** | Keeps a history of every change to your files | "Track changes" for a whole folder |
+| **Branch** | A separate copy of the project where changes are made safely | A draft |
+| **Pull request** | A request to merge a branch into the main copy, with review and checks | Handing in the draft for marking |
+| **GitHub Actions** | Robots on GitHub that run checks automatically on every pull request | An automatic spell-check before anything is accepted |
+
 Two folders matter in the Terminal. The prompt shows which one you are in:
 
 - **Repo root:** `...\defender-hunting-playbooks`
@@ -32,6 +70,8 @@ Commands are for PowerShell on Windows. On macOS/Linux, replace `$env:NAME = "va
 ---
 
 ## 0. Prerequisites (10 min)
+
+💡 **In plain words:** before building anything you need the tools. Terraform is the builder, the Azure CLI lets you talk to Azure by typing instead of clicking, Git fetches and saves the project, Python runs the checking script, and VS Code is where you read and edit files.
 
 📍 **Browser**, then **Terminal** (any folder).
 
@@ -49,6 +89,8 @@ git --version
 📸 `00-tool-versions.png`: the **Terminal** showing the versions.
 
 ## 1. Get the code (5 min)
+
+💡 **In plain words:** the project lives on GitHub. `git clone` downloads your own copy. `git checkout` switches to the branch (the draft) that contains the new lab files. Then you read a few files so the later steps make sense. Reading costs nothing and changes nothing.
 
 📍 **Terminal**, in the folder where you keep your projects (for example `C:\Users\<you>\source`).
 
@@ -79,6 +121,8 @@ In the VS Code file explorer (left side), open and read these, in this order:
 
 ## 2. Validate the rule files (2 min)
 
+💡 **In plain words:** each detection rule is a form with fields like name, severity and how often to run. This script is a spell-checker for those forms. It only reads files on your computer; it doesn't touch Azure.
+
 📍 **Terminal**, in the **repo root**.
 
 ```powershell
@@ -99,6 +143,8 @@ Try breaking one:
 
 ## 3. Format and validate the Terraform offline (5 min)
 
+💡 **In plain words:** now you check the building plan itself. `init` unpacks the builder's tools. `fmt` checks the plan is neatly laid out. `validate` checks the plan makes sense, for example that no setting is misspelled. Still nothing is built and you aren't even signed in to Azure yet.
+
 📍 **Terminal**. Start in the repo root; the first command moves you to the **Terraform folder**, where you stay until step 8.
 
 ```powershell
@@ -108,7 +154,7 @@ terraform fmt -check -recursive
 terraform validate
 ```
 
-- `init -backend=false` downloads the `azurerm` and `azuread` providers but skips the state backend, so it needs no Azure login.
+- `init -backend=false` downloads the `azurerm` and `azuread` providers (the Azure toolsets) but skips connecting to the state notebook, so it needs no Azure login.
 - `fmt -check` prints nothing when every file is correctly formatted.
 - `validate` should print `Success! The configuration is valid.`
 
@@ -119,6 +165,8 @@ terraform validate
 **If validate fails, stop and fix the error before going on.**
 
 ## 4. Sign in to Azure (5 min)
+
+💡 **In plain words:** the builder needs to know who you are and which account pays. `az login` proves who you are. The last line tells Terraform which subscription to build in, a bit like giving the builder the site address.
 
 📍 **Terminal**, in the **Terraform folder**. `az login` opens a **browser** window: sign in there, then return to the Terminal.
 
@@ -135,6 +183,8 @@ The `azurerm` provider (version 4) refuses to run without a subscription ID. Set
 Do **not** screenshot this output; it contains your subscription and tenant IDs.
 
 ## 5. Create the remote state storage (10 min, one time)
+
+💡 **In plain words:** the builder keeps a notebook of everything already built (the state). If the notebook were only on your laptop and the laptop died, the builder would forget what exists. So you keep the notebook in a safe place in Azure. You create that safe place by hand, once, because the builder can't keep a notebook inside something that hasn't been built yet. The role assignment gives you, personally, permission to open it.
 
 📍 **Terminal**, in the **Terraform folder**. The commands create resources in **Azure** (a resource group named `rg-tfstate`); nothing changes on your computer.
 
@@ -177,6 +227,8 @@ Expected: `Successfully configured the backend "azurerm"!` A 403 error means the
 
 ## 6. Plan and apply: workspace and Sentinel, no rules (15 min)
 
+💡 **In plain words:** this is the main event, in three parts. First you fill in your settings (the `terraform.tfvars` file). Then `plan` gives you a quote: it lists what it would build, and builds nothing. Only `apply` does the work. Tonight it builds three things: the box (resource group), the recording room (workspace) and the guard (Sentinel). It gives the guard no instructions yet, because the cameras aren't connected, and Sentinel won't accept an instruction about footage that doesn't exist.
+
 📍 **Terminal**, in the **Terraform folder**:
 
 ```powershell
@@ -191,7 +243,7 @@ Copy-Item terraform.tfvars.example terraform.tfvars
 terraform plan -out tfplan
 ```
 
-Read the plan in the Terminal before doing anything else. Nothing has been created yet. You should see:
+Read the plan in the Terminal before doing anything else. Nothing has been created yet. A green `+` next to a line means "will be created". You should see:
 
 - `Plan: 3 to add, 0 to change, 0 to destroy.` The three are the resource group, the workspace and the Sentinel onboarding.
 - **No** `azurerm_sentinel_alert_rule_scheduled`. The rule is held back.
@@ -218,6 +270,8 @@ az provider register --namespace Microsoft.OperationalInsights
 
 ## 7. Check it in the portal (10 min)
 
+💡 **In plain words:** you walk through the building to confirm the builder did what the quote said. Everything you see here was created by the files, not by clicking.
+
 📍 **Azure portal** (browser) for items 1 to 4.
 
 1. Search bar → **Resource groups** → `rg-sentinel-lab`.
@@ -242,6 +296,8 @@ terraform output
 
 ## 8. Commit your evidence (5 min)
 
+💡 **In plain words:** you save your proof (the screenshots) into the project's history and send it to GitHub. `git add` picks what to save, `git commit` saves it with a note, `git push` uploads it. GitHub's robots then re-run the checks from steps 2 and 3 on their own.
+
 📍 **File Explorer or VS Code**: open `lab/evidence/lab-setup/` and look at each screenshot. Crop out any subscription ID, tenant ID or email address.
 
 📍 **Terminal**. The first command takes you from the Terraform folder back to the **repo root**:
@@ -264,6 +320,8 @@ When you are happy with it, click **Merge pull request** on that same page.
 
 ## 9. Stretch: deploy your first rule (needs data, so probably tomorrow)
 
+💡 **In plain words:** now you plug in the first camera (sign-in logs) and wait for footage to arrive. Once it does, you tell Terraform that the drawer for that footage exists, and it hands the guard the first instruction: "alert me when someone signs in using an old, weak sign-in method".
+
 1. 📍 **Azure portal** → Microsoft Sentinel → `law-sentinel-lab` → **Content management → Content hub** → search **Microsoft Entra ID** → **Install**. Then **Configuration → Data connectors** → **Microsoft Entra ID** → **Open connector page** → tick **Sign-in logs** and **Non-interactive user sign-in logs** → **Apply changes**. This needs an Entra ID P1/P2 licence in the same tenant as the subscription (the M365 E5 trial includes it) and the Security Administrator role. See [data-connectors.md](data-connectors.md).
    📸 `12-entra-connector.png`: the **browser** showing the connector as connected.
 2. 📍 **Browser** (a private window): sign out and in to <https://myapps.microsoft.com> a few times, then wait. First data can take from 15 minutes up to a few hours.
@@ -283,6 +341,8 @@ enabled_rules    = ["legacy-auth-success"]
 7. 📍 **VS Code**: remove the `enabled_rules` line from `terraform.tfvars`, then plan and apply again in the **Terminal** to deploy the other four sign-in rules.
 
 ## 10. Clean up when you're done practising
+
+💡 **In plain words:** demolition. One command removes everything Terraform built, so nothing keeps costing money. Because the plan is saved in files, you can rebuild the same thing any time.
 
 📍 **Terminal**, in the **Terraform folder**:
 
