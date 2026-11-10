@@ -86,3 +86,13 @@ Work through these in order:
 7. [ ] **Investigate every other account** found in step 9, and notify recipients of any phishing from step 7.
 8. [ ] **Document the findings**: timeline, IOCs, root cause (e.g. AiTM phishing, password spray).
 
+## Related detection rules
+
+- [Impossible travel (successful sign-ins faster than 900 km/h apart)](../../detections/impossible-travel.kql)
+
+## Templates
+
+- [travel-confirmation-email.md](../../templates/travel-confirmation-email.md)
+- [closure-notes.md](../../templates/closure-notes.md)
+- [escalation-compromise-email.md](../../templates/escalation-compromise-email.md)
+- [incident-report.md](../../templates/incident-report.md)

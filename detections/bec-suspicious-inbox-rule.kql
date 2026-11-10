@@ -1,0 +1,24 @@
+// Detection: High-risk inbox rule (forward/delete/hide + finance keywords or meaningless short name)
+// Playbook: playbooks/business-email-compromise/README.md
+// Severity: High | Frequency: Every 1 hour | MITRE: T1564.008, T1114.003
+// Entities: User = AccountObjectId, IP = IPAddress
+// Tuning: raise the RiskScore threshold if users' own filing rules trigger it
+// Status: Untested
+let financeWords = dynamic(["invoice", "payment", "bank", "banking", "eft", "remittance", "proof of payment",
+                            "wire", "swift", "beneficiary", "account details", "statement of account"]);
+CloudAppEvents
+| where Timestamp > ago(4h)
+| where ActionType in ("New-InboxRule", "Set-InboxRule", "UpdateInboxRules")
+| extend RawText = tostring(RawEventData)
+| extend RuleName = extract(@'\{"Name":"Name","Value":"([^"]*)"\}', 1, RawText)
+| extend Forwards = RawText has_any ("ForwardTo", "ForwardAsAttachmentTo", "RedirectTo"),
+         Deletes = RawText has_any ("DeleteMessage", "SoftDeleteMessage"),
+         MarksRead = RawText has "MarkAsRead",
+         HidesMail = RawText has_any ("RSS Feeds", "RSS Subscriptions", "Conversation History", "Archive"),
+         FinanceKeywords = RawText has_any (financeWords),
+         ShortName = isnotempty(RuleName) and strlen(trim(@"\s", RuleName)) <= 3
+| extend RiskScore = 2 * toint(Forwards) + 2 * toint(Deletes) + toint(MarksRead) + toint(HidesMail)
+                   + 2 * toint(FinanceKeywords) + 2 * toint(ShortName)
+| where RiskScore >= 4
+| project Timestamp, ReportId, AccountObjectId, AccountDisplayName, ActionType, RuleName, RiskScore,
+          Forwards, Deletes, MarksRead, HidesMail, FinanceKeywords, ShortName, IPAddress, CountryCode, ISP

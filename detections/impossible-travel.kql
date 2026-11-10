@@ -1,8 +1,10 @@
-// Impossible travel: successful Entra ID sign-ins whose implied travel speed is above maxSpeedKmh
-// Platform: Microsoft Defender XDR Advanced Hunting
-// Table: EntraIdSignInEvents (or AADSignInEventsBeta, which has the same columns)
-// Tune: add your VPN/proxy egress ranges to excludedRanges
-let lookback = 7d;
+// Detection: Impossible travel (successful sign-ins faster than 900 km/h apart)
+// Playbook: playbooks/impossible-travel/README.md
+// Severity: Medium | Frequency: Every 24 hours | MITRE: T1078.004
+// Entities: User = AccountObjectId, IP = ToIP
+// Tuning: add VPN/proxy egress ranges to excludedRanges; raise minDistanceKm if mobile carrier noise is high
+// Status: Untested as a rule (logic validated during a live investigation)
+let lookback = 2d;
 let maxSpeedKmh = 900;      // roughly commercial jet speed
 let minDistanceKm = 500;    // ignore small jumps caused by IP geolocation noise
 let excludedRanges = dynamic([]);   // e.g. dynamic(["203.0.113.0/24"])
@@ -12,7 +14,7 @@ EntraIdSignInEvents
 | where array_length(excludedRanges) == 0 or not(ipv4_is_in_any_range(IPAddress, excludedRanges))
 | extend Lat = todouble(Latitude), Lon = todouble(Longitude)
 | where isnotnull(Lat) and isnotnull(Lon)
-| project Timestamp, AccountUpn, AccountObjectId, IPAddress, City, Country, Lat, Lon,
+| project Timestamp, ReportId, AccountUpn, AccountObjectId, IPAddress, City, Country, Lat, Lon,
           Application, ClientAppUsed, LogonType, UserAgent, OSPlatform, Browser,
           AadDeviceId, IsManaged, IsCompliant, SessionId
 | sort by AccountObjectId asc, Timestamp asc
@@ -27,9 +29,9 @@ EntraIdSignInEvents
 | where SpeedKmh > maxSpeedKmh
 | extend SameDevice = isnotempty(AadDeviceId) and AadDeviceId == PrevDevice,
          SameSession = isnotempty(SessionId) and SessionId == PrevSession
-| project AccountUpn,
+| project Timestamp, ReportId, AccountObjectId, AccountUpn,
           FromTime = PrevTime, FromIP = PrevIP, FromLocation = strcat(PrevCity, ", ", PrevCountry), FromApp = PrevApp,
-          ToTime = Timestamp, ToIP = IPAddress, ToLocation = strcat(City, ", ", Country), ToApp = Application,
+          ToIP = IPAddress, ToLocation = strcat(City, ", ", Country), ToApp = Application,
           DistanceKm, HoursBetween, SpeedKmh, SameDevice, SameSession,
           LogonType, ClientAppUsed, OSPlatform, Browser, IsManaged, IsCompliant, UserAgent
 | sort by SpeedKmh desc

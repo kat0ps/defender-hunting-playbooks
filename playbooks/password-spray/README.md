@@ -53,3 +53,14 @@
 4. [ ] **Block legacy authentication** with Conditional Access if step 6 shows attempts.
 5. [ ] **Check MFA coverage:** users without MFA registered are the most exposed.
 6. [ ] **Hardening:** Entra Password Protection with a custom banned list (company name, city, season+year), and a tuned Smart Lockout threshold.
+
+## Related detection rules
+
+- [A spraying IP (failures against 10+ users) got a correct password: signed in, or was only stopped by MFA/CA](../../detections/password-spray-compromise.kql)
+- [Successful sign-in over a legacy authentication protocol (cannot enforce MFA)](../../detections/legacy-auth-success.kql)
+
+## Templates
+
+- [escalation-compromise-email.md](../../templates/escalation-compromise-email.md)
+- [closure-notes.md](../../templates/closure-notes.md)
+- [incident-report.md](../../templates/incident-report.md)

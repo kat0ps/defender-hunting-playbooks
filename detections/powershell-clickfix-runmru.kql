@@ -1,0 +1,13 @@
+// Detection: ClickFix: a script or download command typed/pasted into the Windows Run dialog
+// Playbook: playbooks/suspicious-powershell/README.md
+// Severity: High | Frequency: Every 1 hour (or Continuous/NRT) | MITRE: T1204.004, T1059.001
+// Entities: Device = DeviceId, User = InitiatingProcessAccountObjectId
+// Tuning: IT staff may run powershell/cmd from Run; exclude admin accounts if noisy, but keep "http"/"iex" matches
+// Status: Untested
+DeviceRegistryEvents
+| where Timestamp > ago(4h)
+| where RegistryKey has @"\CurrentVersion\Explorer\RunMRU"
+| where RegistryValueData has_any ("powershell", "pwsh", "mshta", "curl", "iex", "http", "cmd /c", "cmd.exe /c",
+                                   "msiexec", "bitsadmin", "certutil", "rundll32", "wscript")
+| project Timestamp, ReportId, DeviceId, DeviceName, InitiatingProcessAccountObjectId,
+          Account = InitiatingProcessAccountName, RegistryValueName, RegistryValueData

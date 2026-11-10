@@ -1,0 +1,18 @@
+// Detection: Mail forwarded or redirected to an external domain (mailbox setting, inbox rule or transport rule)
+// Playbook: playbooks/business-email-compromise/README.md
+// Severity: High | Frequency: Every 1 hour | MITRE: T1114.003
+// Entities: User = AccountObjectId, IP = IPAddress
+// Tuning: set internalDomains to every accepted domain you own; add approved external partners if needed
+// Status: Untested
+let internalDomains = dynamic(["yourdomain.com"]);
+CloudAppEvents
+| where Timestamp > ago(4h)
+| where ActionType in ("Set-Mailbox", "New-TransportRule", "Set-TransportRule", "New-InboxRule", "Set-InboxRule")
+| extend RawText = tostring(RawEventData)
+| extend ForwardTo = extract(@'"Name":"(?:ForwardingSmtpAddress|ForwardingAddress|RedirectMessageTo|BlindCopyTo|ForwardTo|RedirectTo|ForwardAsAttachmentTo)","Value":"([^"]*)"', 1, RawText)
+| where isnotempty(ForwardTo)
+| extend ForwardDomain = tolower(extract(@'@([A-Za-z0-9.-]+)', 1, ForwardTo))
+| where isnotempty(ForwardDomain) and not(ForwardDomain in~ (internalDomains))
+| extend TargetMailbox = tostring(parse_json(RawEventData).ObjectId)
+| project Timestamp, ReportId, AccountObjectId, AccountDisplayName, ActionType, TargetMailbox, ForwardTo, ForwardDomain,
+          IPAddress, CountryCode, ISP

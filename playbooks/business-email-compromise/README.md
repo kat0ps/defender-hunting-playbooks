@@ -50,3 +50,15 @@
 4. [ ] **Find and purge** fraudulent emails the attacker sent, and notify the recipients (customers and suppliers).
 5. [ ] **Block** lookalike sender domains and any external forwarding addresses.
 6. [ ] **Hardening:** disable automatic external forwarding (outbound spam policy), enable impersonation protection for VIPs, and require phone verification for any banking-details change.
+
+## Related detection rules
+
+- [High-risk inbox rule (forward/delete/hide + finance keywords or meaningless short name)](../../detections/bec-suspicious-inbox-rule.kql)
+- [Mail forwarded or redirected to an external domain (mailbox setting, inbox rule or transport rule)](../../detections/bec-external-forwarding.kql)
+- [External email delivered using an executive's display name (CEO/CFO fraud)](../../detections/bec-vip-impersonation.kql)
+
+## Templates
+
+- [escalation-compromise-email.md](../../templates/escalation-compromise-email.md)
+- [closure-notes.md](../../templates/closure-notes.md)
+- [incident-report.md](../../templates/incident-report.md)

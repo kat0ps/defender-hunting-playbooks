@@ -1,0 +1,16 @@
+// Detection: <Rule name: what it detects in one line>
+// Playbook: playbooks/<scenario>/README.md
+// Severity: <Low/Medium/High> | Frequency: <1h / 3h / 12h / 24h / NRT> | MITRE: <T####.###>
+// Entities: <User = AccountObjectId | Device = DeviceId | Mailbox = RecipientEmailAddress | IP = IPAddress>
+// Tuning: <known false positives and the variable to adjust>
+// Status: Untested
+//
+// Rules for custom detections:
+//  - Output must include Timestamp and ReportId (and DeviceId for Device* tables)
+//  - Match ago() to the frequency: 1h -> ago(4h), 3h -> ago(12h), 12h -> ago(48h), 24h -> up to ago(30d)
+//  - If you summarize, keep Timestamp and ReportId with arg_max(Timestamp, ReportId, ...)
+let excluded = dynamic([]);
+<Table>
+| where Timestamp > ago(4h)
+| where <condition>
+| project Timestamp, ReportId, <entity columns>, <context columns>

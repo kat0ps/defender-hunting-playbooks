@@ -59,3 +59,12 @@ Decide quickly whether a reported email is **benign** (close it and give the rep
 3. [ ] If malicious: purge every copy, block the sender, domain, URLs and hashes in the **Tenant Allow/Block List**, and check the clickers.
 4. [ ] If a legitimate email was blocked or junked: submit it to Microsoft as *Should not have been blocked*.
 5. [ ] Thank the reporter. Positive feedback keeps people reporting.
+
+## Related detection rules
+
+- [User reached a URL that Safe Links flagged, clicked through a warning, or came from an email later removed by ZAP](../../detections/phishing-malicious-url-click.kql)
+
+## Templates
+
+- [phishing-user-notification-email.md](../../templates/phishing-user-notification-email.md)
+- [closure-notes.md](../../templates/closure-notes.md)

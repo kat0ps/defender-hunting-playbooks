@@ -1,0 +1,16 @@
+// Detection: Office, Outlook, HTA or server process spawning PowerShell or another script engine
+// Playbook: playbooks/suspicious-powershell/README.md
+// Severity: High | Frequency: Every 1 hour (or Continuous/NRT) | MITRE: T1204.002, T1059.001
+// Entities: Device = DeviceId, User = AccountObjectId
+// Tuning: some Office add-ins and macros legitimately call cmd/PowerShell; exclude by exact ProcessCommandLine after review
+// Status: Untested
+DeviceProcessEvents
+| where Timestamp > ago(4h)
+| where FileName in~ ("powershell.exe", "pwsh.exe", "cmd.exe", "mshta.exe", "wscript.exe", "cscript.exe",
+                      "rundll32.exe", "regsvr32.exe")
+| where InitiatingProcessFileName in~ ("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe", "onenote.exe",
+                                       "msaccess.exe", "mspub.exe", "acrord32.exe", "mshta.exe",
+                                       "w3wp.exe", "sqlservr.exe")
+| project Timestamp, ReportId, DeviceId, DeviceName, AccountObjectId, AccountName,
+          Parent = InitiatingProcessFileName, ParentCommandLine = InitiatingProcessCommandLine,
+          FileName, ProcessCommandLine, SHA256

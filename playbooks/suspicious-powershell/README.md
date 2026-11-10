@@ -54,3 +54,16 @@
 4. [ ] **Check the user's account.** ClickFix and info-stealer payloads steal browser cookies and passwords, so revoke sessions and reset the password.
 5. [ ] **Hunt the IOCs across all devices** (steps 2 and 6 with the domain or hash).
 6. [ ] **Hardening:** Attack Surface Reduction rules (block Office child processes, block obfuscated scripts), Constrained Language Mode, PowerShell script block logging, and restricting the Run dialog for standard users where practical.
+
+## Related detection rules
+
+- [Office, Outlook, HTA or server process spawning PowerShell or another script engine](../../detections/powershell-office-child-process.kql)
+- [Encoded PowerShell whose decoded content downloads or executes code](../../detections/powershell-encoded-download.kql)
+- [ClickFix: a script or download command typed/pasted into the Windows Run dialog](../../detections/powershell-clickfix-runmru.kql)
+- [PowerShell disabling AMSI/Defender, adding exclusions, or clearing event logs](../../detections/powershell-defender-tampering.kql)
+
+## Templates
+
+- [escalation-compromise-email.md](../../templates/escalation-compromise-email.md)
+- [closure-notes.md](../../templates/closure-notes.md)
+- [incident-report.md](../../templates/incident-report.md)

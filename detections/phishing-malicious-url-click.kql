@@ -1,0 +1,21 @@
+// Detection: User reached a URL that Safe Links flagged, clicked through a warning, or came from an email later removed by ZAP
+// Playbooks: playbooks/phishing-triage/README.md, playbooks/user-reported-email/README.md
+// Severity: High | Frequency: Every 1 hour | MITRE: T1204.001, T1566.002
+// Entities: User = AccountUpn, URL = Url, IP = IPAddress
+// Tuning: none expected; ZAP can happen after the click, so some hits arrive on a later run
+// Status: Untested
+let lookback = 4h;
+let threatEmails = EmailEvents
+    | where Timestamp > ago(7d) and isnotempty(ThreatTypes)
+    | project NetworkMessageId, EmailThreat = ThreatTypes;
+let zapped = EmailPostDeliveryEvents
+    | where Timestamp > ago(7d) and ActionType has "ZAP"
+    | project NetworkMessageId, PostDeliveryAction = ActionType;
+UrlClickEvents
+| where Timestamp > ago(lookback)
+| where ActionType == "ClickAllowed" or IsClickedThrough == true
+| join kind=leftouter (threatEmails | distinct NetworkMessageId, EmailThreat) on NetworkMessageId
+| join kind=leftouter (zapped | distinct NetworkMessageId, PostDeliveryAction) on NetworkMessageId
+| where isnotempty(ThreatTypes) or IsClickedThrough == true or isnotempty(EmailThreat) or isnotempty(PostDeliveryAction)
+| project Timestamp, ReportId, AccountUpn, Url, IPAddress, ActionType, IsClickedThrough,
+          ClickThreat = ThreatTypes, EmailThreat, PostDeliveryAction, Workload, NetworkMessageId

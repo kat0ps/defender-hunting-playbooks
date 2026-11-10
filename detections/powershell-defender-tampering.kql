@@ -1,0 +1,15 @@
+// Detection: PowerShell disabling AMSI/Defender, adding exclusions, or clearing event logs
+// Playbook: playbooks/suspicious-powershell/README.md
+// Severity: High | Frequency: Every 1 hour | MITRE: T1562.001, T1070.001
+// Entities: Device = DeviceId, User = AccountObjectId
+// Tuning: exclude your deployment tooling if it sets Defender preferences during builds
+// Status: Untested
+DeviceProcessEvents
+| where Timestamp > ago(4h)
+| where FileName in~ ("powershell.exe", "pwsh.exe")
+| where ProcessCommandLine has_any ("AmsiUtils", "amsiInitFailed", "AmsiScanBuffer",
+                                    "DisableRealtimeMonitoring", "DisableIOAVProtection", "DisableBehaviorMonitoring",
+                                    "Add-MpPreference", "Remove-MpPreference", "ExclusionPath", "ExclusionProcess",
+                                    "Clear-EventLog", "Remove-EventLog", "wevtutil cl")
+| project Timestamp, ReportId, DeviceId, DeviceName, AccountObjectId, AccountName,
+          InitiatingProcessFileName, InitiatingProcessCommandLine, ProcessCommandLine

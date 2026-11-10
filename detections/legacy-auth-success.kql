@@ -1,0 +1,14 @@
+// Detection: Successful sign-in over a legacy authentication protocol (cannot enforce MFA)
+// Playbook: playbooks/password-spray/README.md
+// Severity: Medium | Frequency: Every 1 hour | MITRE: T1078.004, T1110
+// Entities: User = AccountObjectId, IP = IPAddress
+// Tuning: if legacy auth is blocked by Conditional Access this should never fire; exclude approved devices (scanners/printers using SMTP)
+// Status: Untested
+let excludedAccounts = dynamic([]);   // e.g. dynamic(["scanner@yourdomain.com"])
+EntraIdSignInEvents
+| where Timestamp > ago(4h)
+| where ErrorCode == 0
+| where ClientAppUsed in ("IMAP4", "POP3", "Authenticated SMTP", "Exchange ActiveSync",
+                          "Other clients", "AutoDiscover", "Offline Address Book")
+| where not(AccountUpn in~ (excludedAccounts))
+| project Timestamp, ReportId, AccountObjectId, AccountUpn, IPAddress, Country, ClientAppUsed, Application, UserAgent

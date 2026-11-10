@@ -53,3 +53,15 @@ The victim clicks a phishing link that loads a **reverse proxy** in front of the
 5. [ ] **Block the phishing domain and proxy IPs** (Defender indicators, Tenant Allow/Block List).
 6. [ ] **Purge the phishing email** from every mailbox (phishing triage playbook, step 6).
 7. [ ] **Hardening:** phishing-resistant MFA (FIDO2/passkeys, Windows Hello), Conditional Access requiring compliant devices, and Token Protection where supported.
+
+## Related detection rules
+
+- [Successful sign-in from an HTTP automation user agent (AiTM proxy / token tooling)](../../detections/aitm-automation-useragent-signin.kql)
+- [Email link click followed within 30 minutes by a successful sign-in from a never-seen IP](../../detections/aitm-click-then-new-ip-signin.kql)
+- [One sign-in session used from more than one country AND more than one user agent (session cookie replay)](../../detections/aitm-session-replay-useragent-change.kql)
+
+## Templates
+
+- [escalation-compromise-email.md](../../templates/escalation-compromise-email.md)
+- [closure-notes.md](../../templates/closure-notes.md)
+- [incident-report.md](../../templates/incident-report.md)

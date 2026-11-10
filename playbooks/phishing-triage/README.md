@@ -59,3 +59,14 @@
 4. [ ] **For executed attachments:** isolate the device, collect an investigation package, and run a full scan.
 5. [ ] **Notify users** who received it, and thank the reporter.
 6. [ ] **If a partner domain was the sender**, warn that partner that they may be compromised.
+
+## Related detection rules
+
+- [User reached a URL that Safe Links flagged, clicked through a warning, or came from an email later removed by ZAP](../../detections/phishing-malicious-url-click.kql)
+
+## Templates
+
+- [phishing-user-notification-email.md](../../templates/phishing-user-notification-email.md)
+- [closure-notes.md](../../templates/closure-notes.md)
+- [escalation-compromise-email.md](../../templates/escalation-compromise-email.md)
+- [incident-report.md](../../templates/incident-report.md)

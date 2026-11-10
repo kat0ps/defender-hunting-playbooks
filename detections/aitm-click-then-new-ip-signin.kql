@@ -1,0 +1,24 @@
+// Detection: Email link click followed within 30 minutes by a successful sign-in from a never-seen IP
+// Playbook: playbooks/aitm-token-theft/README.md
+// Severity: High | Frequency: Every 24 hours (needs a 30-day baseline) | MITRE: T1566.002, T1557, T1539
+// Entities: User = AccountObjectId, IP = SignInIP, URL = Url
+// Tuning: exclude your own office egress IPs; expect some noise from users on new home/mobile networks
+// Status: Untested
+let lookback = 1d;
+let window = 30m;
+let clicks = UrlClickEvents
+    | where Timestamp > ago(lookback)
+    | where ActionType == "ClickAllowed" or IsClickedThrough == true
+    | project ClickTime = Timestamp, AccountUpn = tolower(AccountUpn), Url, ClickIP = IPAddress, NetworkMessageId;
+let baseline = EntraIdSignInEvents
+    | where Timestamp between (ago(30d) .. ago(lookback)) and ErrorCode == 0
+    | distinct AccountUpn = tolower(AccountUpn), IPAddress;
+EntraIdSignInEvents
+| where Timestamp > ago(lookback) and ErrorCode == 0
+| extend AccountUpn = tolower(AccountUpn)
+| join kind=inner clicks on AccountUpn
+| where Timestamp between (ClickTime .. (ClickTime + window))
+| join kind=leftanti baseline on AccountUpn, IPAddress
+| summarize arg_min(Timestamp, ReportId, IPAddress, Country, Application, UserAgent) by AccountObjectId, AccountUpn, ClickTime, Url, ClickIP, NetworkMessageId
+| project Timestamp, ReportId, AccountObjectId, AccountUpn, ClickTime, Url, ClickIP,
+          SignInIP = IPAddress, Country, Application, UserAgent, NetworkMessageId

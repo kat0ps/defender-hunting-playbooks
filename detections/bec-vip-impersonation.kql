@@ -1,0 +1,15 @@
+// Detection: External email delivered using an executive's display name (CEO/CFO fraud)
+// Playbook: playbooks/business-email-compromise/README.md
+// Severity: Medium | Frequency: Every 1 hour | MITRE: T1656, T1566
+// Entities: Mailbox = RecipientEmailAddress
+// Tuning: fill in vipNames and internalDomains; exclude executives' known personal addresses if they email work
+// Status: Untested
+let vipNames = dynamic(["First Last", "First2 Last2"]);
+let internalDomains = dynamic(["yourdomain.com"]);
+EmailEvents
+| where Timestamp > ago(4h)
+| where EmailDirection == "Inbound" and DeliveryAction == "Delivered"
+| where SenderDisplayName has_any (vipNames)
+| where not(SenderFromDomain in~ (internalDomains))
+| project Timestamp, ReportId, RecipientEmailAddress, SenderDisplayName, SenderFromAddress, SenderFromDomain,
+          Subject, LatestDeliveryLocation, NetworkMessageId

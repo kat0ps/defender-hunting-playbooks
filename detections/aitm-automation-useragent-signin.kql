@@ -1,0 +1,15 @@
+// Detection: Successful sign-in from an HTTP automation user agent (AiTM proxy / token tooling)
+// Playbook: playbooks/aitm-token-theft/README.md
+// Severity: High | Frequency: Every 1 hour | MITRE: T1557, T1550.004
+// Entities: User = AccountObjectId, IP = IPAddress
+// Tuning: add known service accounts that use scripts to excludedAccounts
+// Status: Untested
+let excludedAccounts = dynamic([]);   // e.g. dynamic(["svc-backup@yourdomain.com"])
+EntraIdSignInEvents
+| where Timestamp > ago(4h)
+| where ErrorCode == 0
+| where UserAgent has_any ("axios/", "node-fetch", "python-requests", "Go-http-client", "PostmanRuntime",
+                           "curl/", "aiohttp", "undici", "libwww-perl")
+| where not(AccountUpn in~ (excludedAccounts))
+| project Timestamp, ReportId, AccountObjectId, AccountUpn, IPAddress, Country, City,
+          Application, UserAgent, AuthenticationRequirement, SessionId
