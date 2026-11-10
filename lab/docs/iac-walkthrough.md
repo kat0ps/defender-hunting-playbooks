@@ -100,7 +100,7 @@ cd defender-hunting-playbooks
 git fetch origin
 git checkout lab/sentinel-detections-as-code
 pip install pyyaml
-mkdir lab/evidence/lab-setup
+mkdir -Force lab/evidence/lab-setup
 ```
 
 You are now in the **repo root**. If you already have the repo cloned, `cd` into it and run only the last four lines.
