@@ -55,5 +55,6 @@ lab/evidence/           screenshots and notes proving each rule fired
 1. Read the [learning guide](docs/learning-guide.md).
    - To deploy the workspace and Sentinel with Terraform, follow the [IaC walkthrough](docs/iac-walkthrough.md).
    - [Data connectors](docs/data-connectors.md) lists which connector and tables each rule needs.
+   - [Troubleshooting log](docs/troubleshooting.md): real errors from building the lab and how they were fixed.
 2. Use the [build prompts](docs/prompts.md) to scaffold the lab and convert the detections.
 3. Work phase by phase, committing through pull requests.
