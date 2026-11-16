@@ -1,0 +1,13 @@
+// Step 2: what the user actually did from anonymous proxy IPs around the alert
+// Sign-in only, or real activity (mail access, file downloads, admin changes)?
+// UncommonForUser lists what was unusual about each activity for this user (IP, ISP, country, user agent)
+let user = "user@domain.com";
+let alertTime = datetime(2026-11-16 08:00:00);
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp between ((alertTime - 1d) .. (alertTime + 1d))
+| where AccountObjectId == userId
+| where tobool(IsAnonymousProxy)
+| project Timestamp, Application, ActionType, ObjectName, IPAddress, CountryCode, City, ISP,
+          IPCategory, IPTags, UserAgent, UncommonForUser, IsAdminOperation, RawEventData
+| sort by Timestamp asc

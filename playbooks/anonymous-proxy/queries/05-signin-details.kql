@@ -1,0 +1,13 @@
+// Step 5: how the sign-ins from the proxy IPs authenticated
+// Red flags: single-factor (AuthenticationRequirement = singleFactorAuthentication), legacy ClientAppUsed,
+// failures before a success (ErrorCode 50126 then 0), unmanaged device, automation user agent,
+// ConditionalAccessStatus = 2 (notApplied). RiskEventTypes containing "anonymizedIPAddress" is Entra ID Protection agreeing
+let user = "user@domain.com";
+let ips = dynamic(["x.x.x.x"]);
+EntraIdSignInEvents
+| where Timestamp > ago(7d) and AccountUpn =~ user
+| where IPAddress in (ips) or RiskEventTypes has "anonymizedIPAddress"
+| project Timestamp, IPAddress, Country, City, Application, ResourceDisplayName, LogonType, ErrorCode,
+          AuthenticationRequirement, ClientAppUsed, ConditionalAccessStatus, RiskLevelDuringSignIn, RiskEventTypes,
+          DeviceName, AadDeviceId, IsManaged, IsCompliant, OSPlatform, Browser, UserAgent, SessionId
+| sort by Timestamp asc

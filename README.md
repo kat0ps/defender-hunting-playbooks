@@ -13,6 +13,7 @@ Each playbook walks through an investigation from alert to verdict to containmen
 |---|---|---|---|
 | [Impossible travel / account compromise](playbooks/impossible-travel/README.md) | Identity | An Atypical travel / Impossible travel alert fires, or you suspect a compromised Entra ID account | T1078.004, T1539, T1114.003 |
 | [AiTM phishing / token theft](playbooks/aitm-token-theft/README.md) | Identity | A phishing click is followed by a sign-in from a new IP, or an AiTM / stolen-cookie alert fires | T1557, T1539, T1550.004 |
+| [Activity from an anonymous proxy](playbooks/anonymous-proxy/README.md) | Identity | An *Activity from an anonymous proxy* or *Anonymous IP address* alert: VPN, Tor or proxy use on an account | T1090.002, T1090.003, T1078.004 |
 | [Password spray / brute force](playbooks/password-spray/README.md) | Identity | Many failed sign-ins across users, lockout spikes, or a password spray alert | T1110.003, T1110.001 |
 | [User-reported email](playbooks/user-reported-email/README.md) | Email | An *Email reported by user as malware or phish* alert, or a Report-button submission | T1566.001, T1566.002, T1656 |
 | [Phishing email triage](playbooks/phishing-triage/README.md) | Email | A user-reported phish, malicious URL click, or post-delivery removal alert | T1566.001, T1566.002, T1204 |
@@ -80,6 +81,7 @@ lab/                                # cloud detection engineering lab: Terraform
 
 ## Changelog
 
+- **2026-11-16**: Added anonymous proxy playbook (*Activity from an anonymous proxy*): alert scope, flagged activities, IP enrichment, user proxy history, sign-in details, session link, post-access actions, blast radius. Detection rule to follow.
 - **2026-11-10**: Added the cloud detection engineering lab (`lab/`): learning guide, build prompts, folder scaffold for Terraform, Sentinel rules, simulations, evidence and workflows.
 - **2026-11-10**: Added 13 new detection rules (14 total) with a detections index; made impossible travel rule-ready. Added templates: incident report, closure notes, escalation email, phishing user notification, detection rule. Updated the playbook template. Linked rules and templates from every playbook.
 - **2026-11-10**: Added user-reported email playbook (M365 suspicious user submission): one-row triage summary, all submissions, similar reports, sender reputation.

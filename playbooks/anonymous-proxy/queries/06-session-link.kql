@@ -1,0 +1,16 @@
+// Step 6: same device on a VPN, or someone else with the user's session?
+// Takes every SessionId seen on the proxy IPs and shows all IPs that session used
+// Same SessionId, same UserAgent and same AadDeviceId on both the proxy and the user's normal IP = the user switching a VPN on and off
+// Same SessionId with a different UserAgent or device, or a session that only ever lived on the proxy = possible token replay
+let user = "user@domain.com";
+let ips = dynamic(["x.x.x.x"]);
+let proxySessions = EntraIdSignInEvents
+    | where Timestamp > ago(7d) and AccountUpn =~ user and IPAddress in (ips) and isnotempty(SessionId)
+    | distinct SessionId;
+EntraIdSignInEvents
+| where Timestamp > ago(7d) and AccountUpn =~ user and SessionId in (proxySessions)
+| extend OnProxy = IPAddress in (ips)
+| summarize FirstSeen = min(Timestamp), LastSeen = max(Timestamp), SignIns = count(),
+            UserAgents = make_set(UserAgent, 5), Devices = make_set(AadDeviceId, 3), Managed = make_set(IsManaged)
+            by SessionId, OnProxy, IPAddress, Country
+| sort by SessionId, FirstSeen asc

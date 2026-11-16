@@ -1,0 +1,19 @@
+// Step 7: what happened after the proxy sign-in? (persistence, mailbox abuse, data access)
+// Covers MFA/device registration, app consent, inbox rules and forwarding, mail access, file downloads and sharing
+// Any of these coming from the proxy IP is the strongest sign of compromise
+let user = "user@domain.com";
+let alertTime = datetime(2026-11-16 08:00:00);
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp between ((alertTime - 1h) .. (alertTime + 3d))
+| where AccountObjectId == userId
+| where ActionType in ("New-InboxRule", "Set-InboxRule", "UpdateInboxRules", "Set-Mailbox",
+                       "Add-MailboxPermission", "Add-RecipientPermission", "MailItemsAccessed", "Send",
+                       "FileDownloaded", "FileSyncDownloadedFull", "AnonymousLinkCreated", "SharingInvitationCreated",
+                       "Consent to application.", "User registered security info.", "Register device.",
+                       "Add registered owner to device.", "Change user password.", "Reset user password.")
+    or (ActionType == "Update user." and tostring(RawEventData) has "StrongAuthentication")
+| summarize Events = count(), First = min(Timestamp), Last = max(Timestamp),
+            Objects = make_set(ObjectName, 10), Countries = make_set(CountryCode, 3)
+            by ActionType, Application, IPAddress, FromProxy = tobool(IsAnonymousProxy)
+| sort by FromProxy desc, First asc
