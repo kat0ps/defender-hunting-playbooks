@@ -1,0 +1,11 @@
+// Step 8: blast radius (which other accounts used the same proxy IPs, or the same proxy provider?)
+// Several unrelated users on the same anonymous IP in a short window can mean a shared attacker infrastructure or a password spray
+let ips = dynamic(["x.x.x.x"]);
+let isps = dynamic(["<ISP from step 3>"]);
+CloudAppEvents
+| where Timestamp > ago(30d)
+| where IPAddress in (ips) or (tobool(IsAnonymousProxy) and ISP in~ (isps))
+| summarize Events = count(), FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            IPs = make_set(IPAddress, 10), Apps = make_set(Application, 5), Actions = make_set(ActionType, 10)
+            by AccountObjectId, AccountDisplayName
+| sort by FirstSeen desc

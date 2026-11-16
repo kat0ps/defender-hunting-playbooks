@@ -1,0 +1,11 @@
+// Step 3: who is behind the IP? (commercial VPN, Tor, iCloud Private Relay, corporate egress, hosting)
+// IPTags often name the provider or say "Tor". Many users from the same IP every day usually means a corporate VPN or SSE/proxy service
+// Also check the IP on Defender's IP page and in threat intel for reputation
+let ips = dynamic(["x.x.x.x"]);
+CloudAppEvents
+| where Timestamp > ago(30d) and IPAddress in (ips)
+| summarize Events = count(), Users = dcount(AccountObjectId), ActiveDays = dcount(bin(Timestamp, 1d)),
+            FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            ISP = make_set(ISP, 3), Category = make_set(IPCategory, 3), Tags = make_set(tostring(IPTags), 5),
+            AnonymousProxy = make_set(IsAnonymousProxy), Country = make_set(CountryCode, 3), City = make_set(City, 3)
+            by IPAddress

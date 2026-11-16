@@ -1,0 +1,8 @@
+// Step 1: alert scope (who, which IP, which app, when)
+// Note the IP(s) and the time of the first flagged activity. You need them for every later step
+let alertId = "<AlertId>";
+AlertInfo
+| where AlertId == alertId
+| join kind=inner AlertEvidence on AlertId
+| project Timestamp, Title, Severity, ServiceSource, DetectionSource, EntityType, EvidenceRole,
+          AccountUpn, AccountObjectId, RemoteIP, Application, DeviceName, AdditionalFields

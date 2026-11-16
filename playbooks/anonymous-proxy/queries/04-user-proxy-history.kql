@@ -1,0 +1,13 @@
+// Step 4: is anonymous proxy use normal for this user?
+// One row per day: proxy vs non-proxy activity, and which proxy ISPs they used
+// Daily use of the same provider for weeks points to a habitual VPN; a first-ever appearance near the alert does not
+let user = "user@domain.com";
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp > ago(30d) and AccountObjectId == userId
+| summarize ProxyEvents = countif(tobool(IsAnonymousProxy)), OtherEvents = countif(not(tobool(IsAnonymousProxy))),
+            ProxyISPs = make_set_if(ISP, tobool(IsAnonymousProxy), 5),
+            ProxyCountries = make_set_if(CountryCode, tobool(IsAnonymousProxy), 5),
+            NormalCountries = make_set_if(CountryCode, not(tobool(IsAnonymousProxy)), 5)
+            by Day = bin(Timestamp, 1d)
+| sort by Day desc
