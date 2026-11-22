@@ -6,13 +6,15 @@ Detection content comes from this repo's [detections](../detections/README.md) a
 
 ## Status
 
-🚧 **In progress.** Follow the [learning guide](docs/learning-guide.md).
+🚧 **In progress.** Phases 0 and 1 are complete; phase 2 is underway (Terraform plan verified, deployment next). Follow the [learning guide](docs/learning-guide.md).
+
+✅ complete · 🟡 in progress · ⬜ not started
 
 | Phase | Description | Status |
 |---|---|---|
-| 0 | Tooling and scaffold | ⬜ |
-| 1 | Terraform fundamentals | ⬜ |
-| 2 | Lab infrastructure (Log Analytics, Sentinel, VM, cost guardrails) | ⬜ |
+| 0 | Tooling and scaffold | ✅ ([evidence](evidence/lab-setup/)) |
+| 1 | Terraform fundamentals | ✅ fmt, validate, remote state, plan |
+| 2 | Lab infrastructure (Log Analytics, Sentinel, VM, cost guardrails) | 🟡 plan verified (3 resources, rule held back until its tables exist) |
 | 3 | Detections as code (14 rules) | ⬜ |
 | 4 | CI/CD with GitHub Actions (OIDC) | ⬜ |
 | 5 | Detection testing and evidence | ⬜ |
