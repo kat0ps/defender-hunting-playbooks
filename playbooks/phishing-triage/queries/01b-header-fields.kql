@@ -1,0 +1,22 @@
+// Step 1b: the header fields Advanced Hunting records for one email
+// Advanced Hunting does NOT store the full raw header (Received chain, Reply-To, Return-Path, X-headers);
+// get those from the email entity page (see "Pulling the full header" in the playbook README)
+// Use this to compare against the raw header: a mismatch in sender IP, MailFrom or Message-ID is worth explaining
+let networkMessageId = "<NetworkMessageId>";
+EmailEvents
+| where Timestamp > ago(30d)
+| where NetworkMessageId == networkMessageId
+| extend Auth = parse_json(AuthenticationDetails)
+| summarize Recipients = make_set(RecipientEmailAddress, 50),
+            arg_max(Timestamp, InternetMessageId, Subject, SenderDisplayName,
+                    SenderFromAddress, SenderFromDomain,           // "From:" header the user sees
+                    SenderMailFromAddress, SenderMailFromDomain,   // envelope sender (Return-Path / 5321.MailFrom)
+                    SenderIPv4, SenderIPv6,                        // connecting IP (the last external Received hop)
+                    Auth, Connectors, EmailDirection, EmailLanguage,
+                    AttachmentCount, UrlCount, BulkComplaintLevel, ConfidenceLevel,
+                    ThreatTypes, ThreatNames, DetectionMethods, OrgLevelAction, OrgLevelPolicy,
+                    UserLevelAction, UserLevelPolicy, AdditionalFields)
+        by NetworkMessageId
+| extend SPF = tostring(Auth.SPF), DKIM = tostring(Auth.DKIM), DMARC = tostring(Auth.DMARC), CompAuth = tostring(Auth.CompAuth),
+         FromMailFromMismatch = isnotempty(SenderMailFromDomain) and SenderFromDomain !~ SenderMailFromDomain
+| project-away Auth

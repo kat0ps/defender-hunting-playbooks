@@ -81,7 +81,7 @@ lab/                                # cloud detection engineering lab: Terraform
 
 ## Changelog
 
-- **2026-11-23**: Phishing triage playbook: step 1 now splits out SPF/DKIM/DMARC/CompAuth and flags From vs MailFrom mismatches; step 2 adds `RiskFlags` for risky attachments and links; step 5 can check every attachment in an email by NetworkMessageId.
+- **2026-11-23**: Phishing triage playbook: step 1 now splits out SPF/DKIM/DMARC/CompAuth and flags From vs MailFrom mismatches; step 2 adds `RiskFlags` for risky attachments and links; step 5 can check every attachment in an email by NetworkMessageId. Step 1 also searches by Message-ID for emails that weren't reported; new step 1b and a guide to pulling and reading the full email header.
 - **2026-11-16**: Added anonymous proxy playbook (*Activity from an anonymous proxy*): alert scope, flagged activities, IP enrichment, user proxy history, sign-in details, session link, post-access actions, blast radius. Detection rule to follow.
 - **2026-11-10**: Added the cloud detection engineering lab (`lab/`): learning guide, build prompts, folder scaffold for Terraform, Sentinel rules, simulations, evidence and workflows.
 - **2026-11-10**: Added 13 new detection rules (14 total) with a detections index; made impossible travel rule-ready. Added templates: incident report, closure notes, escalation email, phishing user notification, detection rule. Updated the playbook template. Linked rules and templates from every playbook.

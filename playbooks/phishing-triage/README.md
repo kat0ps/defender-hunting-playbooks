@@ -1,12 +1,14 @@
 # Playbook: Phishing Email Triage
 
 **Platform:** Microsoft Defender XDR Advanced Hunting (Defender for Office 365 + Defender for Endpoint)
-**Triggers:** User-reported phish, *Email messages containing malicious URL removed after delivery*, *A potentially malicious URL click was detected*, *Email reported by user as malware or phish*
+**Triggers:** A suspicious email escalated to you directly (not reported), user-reported phish, *Email messages containing malicious URL removed after delivery*, *A potentially malicious URL click was detected*, *Email reported by user as malware or phish*
 **MITRE ATT&CK:** T1566.001 Spearphishing Attachment · T1566.002 Spearphishing Link · T1204.001 User Execution: Malicious Link · T1204.002 User Execution: Malicious File
 
 ---
 
 > **Starting from a user report?** Run the [user-reported email playbook](../user-reported-email/README.md) first for a quick benign-or-malicious verdict, then come back here if it's malicious.
+>
+> **Email not reported?** Start here at step 1. The queries search every email delivered to the tenant, not just submissions. If you have the email itself, copy its `Message-ID` header into `internetMessageId` for an exact match.
 
 ## The four questions
 
@@ -21,7 +23,8 @@
 
 | # | Step | Query | What you're looking for |
 |---|---|---|---|
-| 1 | Find the email | [01-find-email.kql](queries/01-find-email.kql) | NetworkMessageId, sender, SPF/DKIM/DMARC/CompAuth as separate columns, From vs MailFrom mismatch, delivery action and current location |
+| 1 | Find the email | [01-find-email.kql](queries/01-find-email.kql) | Search by NetworkMessageId, Message-ID, sender or subject. Returns NetworkMessageId, sender, SPF/DKIM/DMARC/CompAuth as separate columns, From vs MailFrom mismatch, delivery action and current location |
+| 1b | Header fields | [01b-header-fields.kql](queries/01b-header-fields.kql) | The header data Advanced Hunting keeps (From vs envelope sender, connecting IP, Message-ID, auth results, policy actions) to compare with the raw header |
 | 2 | URLs and attachments | [02-email-artifacts.kql](queries/02-email-artifacts.kql) | URL domains and attachment hashes to pivot on, with `RiskFlags` for double extensions, risky file types, shorteners and raw-IP links |
 | 3 | Campaign scope | [03-campaign-scope.kql](queries/03-campaign-scope.kql) | Every recipient of the same sender, subject, URL domain or attachment hash |
 | 4 | Who clicked | [04-who-clicked.kql](queries/04-who-clicked.kql) | `ClickAllowed` / `IsClickedThrough = true` means the user reached the site |
@@ -39,6 +42,26 @@ Step 1 splits `AuthenticationDetails` into `SPF`, `DKIM`, `DMARC` and `CompAuth`
 - **DMARC fail or CompAuth fail** from a domain that looks like a known brand or partner suggests spoofing.
 - **All checks pass from a newly registered or lookalike domain:** the attacker owns the domain. Passing checks don't make it safe.
 - **All checks pass from a real partner's domain:** that partner may be compromised (vendor email compromise). Warn them.
+
+## Pulling the full header (step 1b)
+
+Advanced Hunting only stores some header fields. For the raw header (the `Received` chain, `Reply-To`, `Return-Path`, `Authentication-Results` and the `X-` headers), use one of these:
+
+- **Defender portal:** Email & collaboration → Explorer (or open the email entity from the incident) → select the email → **Email entity** → **View header** / **Copy header**. Downloading the `.eml` needs the *Preview* permission.
+- **From the mailbox:** if you have the message, Outlook → File → Properties → *Internet headers*, or Outlook on the web → ⋯ → View → *View message details*.
+- **Parse it:** paste the header into Microsoft's Message Header Analyzer (mha.azurewebsites.net) to read the hops in order.
+
+What to check in the raw header:
+
+| Header | Red flag |
+|---|---|
+| `Reply-To` | A different domain from `From` (replies go to the attacker); a free mail address for a "corporate" sender |
+| `Return-Path` | Doesn't match the `From` domain and DMARC failed |
+| `Received` (bottom-most external hop) | IP or hostname that doesn't belong to the sender's mail provider; should match `SenderIPv4` from step 1b |
+| `Authentication-Results` | `spf=fail`, `dkim=fail`, `dmarc=fail`, `compauth=fail` (step 1 shows the same verdicts) |
+| `X-Forefront-Antispam-Report` | `SFV:SPM`/`SFV:SKS` (spam), `CAT:PHSH`/`HPHISH`/`SPOOF`, `IPV:CAL` (allowed by an IP allow list, so filtering was bypassed) |
+| `X-MS-Exchange-Organization-SCL` | 5 or above means spam; `-1` means filtering was skipped by a transport rule or allow list |
+| `Message-ID` | Domain unrelated to the sender, or doesn't match `InternetMessageId` in step 1 |
 
 ## Reading the artifacts (step 2)
 
@@ -65,7 +88,7 @@ Step 1 splits `AuthenticationDetails` into `SPF`, `DKIM`, `DMARC` and `CompAuth`
 2. [ ] **Block** the sender address and domain, URLs and file hashes (Tenant Allow/Block List and Defender indicators).
 3. [ ] **For clickers:** check for sign-ins straight after the click, and revoke sessions and reset passwords if found.
 4. [ ] **For executed attachments:** isolate the device, collect an investigation package, and run a full scan.
-5. [ ] **Notify users** who received it, and thank the reporter.
+5. [ ] **Notify users** who received it, and thank the reporter if there was one.
 6. [ ] **If a partner domain was the sender**, warn that partner that they may be compromised.
 
 ## Related detection rules

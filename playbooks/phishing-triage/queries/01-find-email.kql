@@ -1,18 +1,22 @@
-// Step 1: find the reported email, its delivery details and its authentication results
-// Fill in ONE (or more) of the variables below from the user report or alert; leave the rest empty
+// Step 1: find the email, its delivery details and its authentication results
+// Works for any email delivered to the tenant: reported, alerted on, or escalated to you directly
+// Fill in ONE (or more) of the variables below; leave the rest empty
+// internetMessageId = the Message-ID header from the email itself (most exact match), including the angle brackets
 // Red flags: SPF/DKIM/DMARC/CompAuth = fail, FromMailFromMismatch = true, a display name that impersonates someone internal
 let networkMessageId = "";
+let internetMessageId = "";
 let sender = "";
 let subjectText = "";
 EmailEvents
 | where Timestamp > ago(30d)
 | where (isnotempty(networkMessageId) and NetworkMessageId == networkMessageId)
+     or (isnotempty(internetMessageId) and InternetMessageId == internetMessageId)
      or (isnotempty(sender) and (SenderFromAddress =~ sender or SenderMailFromAddress =~ sender))
      or (isnotempty(subjectText) and Subject has subjectText)
 | extend Auth = parse_json(AuthenticationDetails)
 | extend SPF = tostring(Auth.SPF), DKIM = tostring(Auth.DKIM), DMARC = tostring(Auth.DMARC), CompAuth = tostring(Auth.CompAuth)
 | extend FromMailFromMismatch = isnotempty(SenderMailFromDomain) and SenderFromDomain !~ SenderMailFromDomain
-| project Timestamp, NetworkMessageId, SenderDisplayName, SenderFromAddress, SenderMailFromAddress, FromMailFromMismatch,
-          SenderIPv4, RecipientEmailAddress, Subject, EmailDirection, SPF, DKIM, DMARC, CompAuth,
+| project Timestamp, NetworkMessageId, InternetMessageId, SenderDisplayName, SenderFromAddress, SenderMailFromAddress,
+          FromMailFromMismatch, SenderIPv4, RecipientEmailAddress, Subject, EmailDirection, SPF, DKIM, DMARC, CompAuth,
           DeliveryAction, LatestDeliveryLocation, ThreatTypes, DetectionMethods, ConfidenceLevel, AuthenticationDetails
 | sort by Timestamp desc
