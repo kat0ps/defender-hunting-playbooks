@@ -21,11 +21,11 @@
 
 | # | Step | Query | What you're looking for |
 |---|---|---|---|
-| 1 | Find the email | [01-find-email.kql](queries/01-find-email.kql) | NetworkMessageId, sender, SPF/DKIM/DMARC results, delivery action and current location |
-| 2 | URLs and attachments | [02-email-artifacts.kql](queries/02-email-artifacts.kql) | The malicious URL domains and attachment hashes to pivot on |
+| 1 | Find the email | [01-find-email.kql](queries/01-find-email.kql) | NetworkMessageId, sender, SPF/DKIM/DMARC/CompAuth as separate columns, From vs MailFrom mismatch, delivery action and current location |
+| 2 | URLs and attachments | [02-email-artifacts.kql](queries/02-email-artifacts.kql) | URL domains and attachment hashes to pivot on, with `RiskFlags` for double extensions, risky file types, shorteners and raw-IP links |
 | 3 | Campaign scope | [03-campaign-scope.kql](queries/03-campaign-scope.kql) | Every recipient of the same sender, subject, URL domain or attachment hash |
 | 4 | Who clicked | [04-who-clicked.kql](queries/04-who-clicked.kql) | `ClickAllowed` / `IsClickedThrough = true` means the user reached the site |
-| 5 | Attachment execution | [05-attachment-execution.kql](queries/05-attachment-execution.kql) | The attachment saved to disk or executed on an endpoint |
+| 5 | Attachment execution | [05-attachment-execution.kql](queries/05-attachment-execution.kql) | The attachment saved to disk or executed on an endpoint (paste the NetworkMessageId to check every attachment at once) |
 | 6 | Remediation status | [06-remediation-status.kql](queries/06-remediation-status.kql) | Copies still in Inbox or Junk, and whether ZAP or manual remediation ran |
 
 **Then:**
@@ -34,10 +34,18 @@
 
 ## Reading the authentication results (step 1)
 
-`AuthenticationDetails` shows SPF, DKIM, DMARC and CompAuth results:
+Step 1 splits `AuthenticationDetails` into `SPF`, `DKIM`, `DMARC` and `CompAuth` columns:
+- **`FromMailFromMismatch = true`:** the visible From domain differs from the envelope (MailFrom) domain. Common for bulk mail services, but combined with a DMARC fail it points to spoofing.
 - **DMARC fail or CompAuth fail** from a domain that looks like a known brand or partner suggests spoofing.
 - **All checks pass from a newly registered or lookalike domain:** the attacker owns the domain. Passing checks don't make it safe.
 - **All checks pass from a real partner's domain:** that partner may be compromised (vendor email compromise). Warn them.
+
+## Reading the artifacts (step 2)
+
+- **`RiskFlags` is a prompt, not a verdict.** Look up every SHA256 and URL domain in VirusTotal or your threat intel.
+- **Double extension** (`invoice.pdf.exe`) is a classic lure; versioned names like `report.v2.pdf` will also trigger it.
+- **HTML, SVG, ISO, LNK and OneNote attachments** are common phishing and malware loaders and rarely legitimate from outside senders.
+- **Lookalike domains** (`micros0ft-login.com`) aren't flagged automatically, so read the URL domains by eye.
 
 ## Common false positives
 

@@ -1,17 +1,22 @@
 // Step 5: was the attachment saved or executed on any endpoint?
-// Fill in the hash and/or file name from step 2
+// Fill in the NetworkMessageId to check every attachment in the email at once, and/or a hash or file name from step 2
 let lookback = 30d;
+let networkMessageId = "";
 let fileHash = "";
 let fileName = "";
+let hashes = EmailAttachmentInfo
+    | where isnotempty(networkMessageId) and NetworkMessageId == networkMessageId
+    | distinct SHA256
+    | union (print SHA256 = fileHash | where isnotempty(SHA256));
 union
 ( DeviceFileEvents
   | where Timestamp > ago(lookback)
-  | where (isnotempty(fileHash) and SHA256 =~ fileHash) or (isnotempty(fileName) and FileName =~ fileName)
+  | where SHA256 in~ (hashes) or (isnotempty(fileName) and FileName =~ fileName)
   | project Timestamp, Source = "File", DeviceName, Account = InitiatingProcessAccountName, ActionType,
-            FileName, FolderPath, Process = InitiatingProcessFileName, CommandLine = InitiatingProcessCommandLine ),
+            FileName, FolderPath, SHA256, Process = InitiatingProcessFileName, CommandLine = InitiatingProcessCommandLine ),
 ( DeviceProcessEvents
   | where Timestamp > ago(lookback)
-  | where (isnotempty(fileHash) and SHA256 =~ fileHash) or (isnotempty(fileName) and ProcessCommandLine has fileName)
+  | where SHA256 in~ (hashes) or (isnotempty(fileName) and ProcessCommandLine has fileName)
   | project Timestamp, Source = "Process", DeviceName, Account = AccountName, ActionType,
-            FileName, FolderPath, Process = InitiatingProcessFileName, CommandLine = ProcessCommandLine )
+            FileName, FolderPath, SHA256, Process = InitiatingProcessFileName, CommandLine = ProcessCommandLine )
 | sort by Timestamp asc
