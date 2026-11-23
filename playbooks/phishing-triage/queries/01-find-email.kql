@@ -1,5 +1,6 @@
-// Step 1: find the reported email and its delivery details
+// Step 1: find the reported email, its delivery details and its authentication results
 // Fill in ONE (or more) of the variables below from the user report or alert; leave the rest empty
+// Red flags: SPF/DKIM/DMARC/CompAuth = fail, FromMailFromMismatch = true, a display name that impersonates someone internal
 let networkMessageId = "";
 let sender = "";
 let subjectText = "";
@@ -8,7 +9,10 @@ EmailEvents
 | where (isnotempty(networkMessageId) and NetworkMessageId == networkMessageId)
      or (isnotempty(sender) and (SenderFromAddress =~ sender or SenderMailFromAddress =~ sender))
      or (isnotempty(subjectText) and Subject has subjectText)
-| project Timestamp, NetworkMessageId, SenderDisplayName, SenderFromAddress, SenderMailFromAddress, SenderIPv4,
-          RecipientEmailAddress, Subject, EmailDirection, DeliveryAction, LatestDeliveryLocation,
-          ThreatTypes, DetectionMethods, ConfidenceLevel, AuthenticationDetails
+| extend Auth = parse_json(AuthenticationDetails)
+| extend SPF = tostring(Auth.SPF), DKIM = tostring(Auth.DKIM), DMARC = tostring(Auth.DMARC), CompAuth = tostring(Auth.CompAuth)
+| extend FromMailFromMismatch = isnotempty(SenderMailFromDomain) and SenderFromDomain !~ SenderMailFromDomain
+| project Timestamp, NetworkMessageId, SenderDisplayName, SenderFromAddress, SenderMailFromAddress, FromMailFromMismatch,
+          SenderIPv4, RecipientEmailAddress, Subject, EmailDirection, SPF, DKIM, DMARC, CompAuth,
+          DeliveryAction, LatestDeliveryLocation, ThreatTypes, DetectionMethods, ConfidenceLevel, AuthenticationDetails
 | sort by Timestamp desc
