@@ -18,7 +18,7 @@ Each playbook walks through an investigation from alert to verdict to containmen
 | [Password spray / brute force](playbooks/password-spray/README.md) | Identity | Many failed sign-ins across users, lockout spikes, or a password spray alert | T1110.003, T1110.001 |
 | [User-reported email](playbooks/user-reported-email/README.md) | Email | An *Email reported by user as malware or phish* alert, or a Report-button submission | T1566.001, T1566.002, T1656 |
 | [Phishing email triage](playbooks/phishing-triage/README.md) | Email | A user-reported phish, malicious URL click, or post-delivery removal alert | T1566.001, T1566.002, T1204 |
-| [Business email compromise](playbooks/business-email-compromise/README.md) | Email | A suspicious inbox rule or forwarding, a banking-details change request, or payment fraud | T1114.003, T1564.008, T1534, T1656 |
+| [Business email compromise](playbooks/business-email-compromise/README.md) | Email | A suspicious inbox rule or forwarding, a banking-details change request, payment fraud, or a payment email that arrived late or altered | T1114.003, T1564.008, T1534, T1656 |
 | [Suspicious PowerShell](playbooks/suspicious-powershell/README.md) | Endpoint | An encoded or obfuscated PowerShell alert, an Office app spawning scripts, or ClickFix | T1059.001, T1027.010, T1105, T1204.004 |
 
 ### How the playbooks connect
@@ -83,6 +83,7 @@ lab/                                # cloud detection engineering lab: Terraform
 
 ## Changelog
 
+- **2026-11-27**: Business email compromise playbook: added steps 7–10 for a delayed or altered payment email (outbound trace with send-to-mail-flow delay, attachment hash comparison, message tampering in the mailbox, lookalike domains in the thread), a header-checking table, and a triage table.
 - **2026-11-27**: Added leaked credentials playbook (single user): alert scope, user profile, password age, sign-in baseline, correct-password error codes, risky successes, persistence, mailbox abuse, infostealer leak source, blast radius.
 - **2026-11-23**: Phishing triage playbook: step 1 now splits out SPF/DKIM/DMARC/CompAuth and flags From vs MailFrom mismatches; step 2 adds `RiskFlags` for risky attachments and links; step 5 can check every attachment in an email by NetworkMessageId.
 - **2026-11-16**: Added anonymous proxy playbook (*Activity from an anonymous proxy*): alert scope, flagged activities, IP enrichment, user proxy history, sign-in details, session link, post-access actions, blast radius. Detection rule to follow.

@@ -1,0 +1,21 @@
+// Step 9: what happened to mail in the user's mailbox around the send time
+// Look for: drafts or sent items edited (Update), the original moved or deleted, Sent Items cleaned up,
+// and any of it from an IP or user agent the user doesn't normally use (compare with step 6)
+let user = "user@domain.com";
+let sentTime = datetime(2026-11-25 09:00:00);
+let window = 1d;
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp between ((sentTime - window) .. (sentTime + window)) and AccountObjectId == userId
+| where Application == "Microsoft Exchange Online"
+| where ActionType in ("Create", "Update", "Send", "SendAs", "SendOnBehalf", "Move", "MoveToDeletedItems",
+                       "SoftDelete", "HardDelete", "MailItemsAccessed")
+| extend Folder = coalesce(tostring(RawEventData.Item.ParentFolder.Path), tostring(RawEventData.Folder.Path),
+                           tostring(RawEventData.Folders[0].Path)),
+         DestFolder = tostring(RawEventData.DestFolder.Path),
+         Subject = coalesce(tostring(RawEventData.Item.Subject), tostring(RawEventData.AffectedItems[0].Subject)),
+         ChangedProps = tostring(RawEventData.ModifiedProperties),
+         ClientInfo = tostring(RawEventData.ClientInfoString)
+| project Timestamp, ActionType, Subject, Folder, DestFolder, ChangedProps, IPAddress, CountryCode, ISP,
+          UserAgent, ClientInfo, RawEventData
+| sort by Timestamp asc
