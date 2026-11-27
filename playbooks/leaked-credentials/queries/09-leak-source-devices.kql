@@ -1,0 +1,19 @@
+// Step 9: where did the password leak from? Check the user's devices for infostealers
+// Infostealers (Lumma, RedLine, Vidar, StealC...) grab saved browser passwords and cookies and sell them as "logs".
+// If a device the user signs in to had a malware / credential-access alert, the leak is probably recent
+// and session cookies are likely gone too. No alerts here does not rule out a personal/home device
+let user = "user@domain.com";
+let sam = toscalar(IdentityInfo | where AccountUpn =~ user | take 1 | project AccountName);
+let userDevices = DeviceLogonEvents
+    | where Timestamp > ago(30d)
+    | where AccountName =~ sam and ActionType == "LogonSuccess"
+    | distinct DeviceId;
+AlertEvidence
+| where Timestamp > ago(30d)
+| where DeviceId in (userDevices)
+| join kind=inner (AlertInfo | project AlertId, Title, Severity, Category, DetectionSource) on AlertId
+| where Category in ("Malware", "CredentialAccess", "InitialAccess", "Execution", "Exfiltration")
+     or Title has_any ("stealer", "credential", "password", "browser", "cookie")
+| summarize FirstSeen = min(Timestamp), Files = make_set_if(FileName, isnotempty(FileName), 10)
+            by DeviceName, DeviceId, AlertId, Title, Severity, Category, DetectionSource
+| sort by FirstSeen asc

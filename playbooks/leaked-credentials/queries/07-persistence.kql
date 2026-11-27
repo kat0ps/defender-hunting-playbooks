@@ -1,0 +1,15 @@
+// Step 7: persistence after a possible compromise
+// New MFA methods, device registrations, app consents, password changes. Check the IP and user agent of each:
+// anything done from an IP in `ips` (step 4/5) is attacker activity until proven otherwise
+let user = "user@domain.com";
+let userId = toscalar(IdentityInfo | where AccountUpn =~ user | summarize arg_max(Timestamp, AccountObjectId) | project AccountObjectId);
+let ips = dynamic([]);
+CloudAppEvents
+| where Timestamp > ago(30d)
+| where AccountObjectId == userId or RawEventData has user
+| where ActionType has_any ("security info", "StrongAuthentication", "Register device", "Add device",
+        "registered owner", "Consent to application", "app role assignment", "service principal",
+        "Change user password", "Reset user password", "Update user")
+| extend FromSuspiciousIP = IPAddress in (ips)
+| project Timestamp, ActionType, Application, IPAddress, FromSuspiciousIP, CountryCode, ISP, UserAgent, RawEventData
+| sort by Timestamp asc
