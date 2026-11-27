@@ -1,0 +1,15 @@
+// Step 1: alert scope, plus every other alert on this user in the last 30 days
+// A lone "Leaked credentials" alert is common. Leaked credentials PLUS unfamiliar sign-in properties,
+// anonymous IP, password spray or inbox-rule alerts on the same user is a very different case
+let user = "user@domain.com";
+let userId = toscalar(IdentityInfo | where AccountUpn =~ user | summarize arg_max(Timestamp, AccountObjectId) | project AccountObjectId);
+AlertEvidence
+| where Timestamp > ago(30d)
+| where AccountUpn =~ user or AccountObjectId == userId
+| join kind=inner (AlertInfo | project AlertId, Title, Severity, Category, ServiceSource, DetectionSource, AttackTechniques) on AlertId
+| summarize FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            IPs = make_set_if(RemoteIP, isnotempty(RemoteIP)),
+            Devices = make_set_if(DeviceName, isnotempty(DeviceName))
+            by AlertId, Title, Severity, Category, ServiceSource, DetectionSource, AttackTechniques
+| extend IsLeakedCredAlert = Title has "leaked credential"
+| sort by FirstSeen asc

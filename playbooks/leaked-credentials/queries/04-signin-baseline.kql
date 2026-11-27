@@ -1,0 +1,15 @@
+// Step 4: baseline the user's IPs and flag new ones
+// Everything seen in the 30-day window, with first-seen time. IPs first seen in the last 7 days,
+// in a new country or on a hosting / VPN ISP, are the ones to carry into steps 5-9 as `ips`
+let user = "user@domain.com";
+let recent = 7d;
+EntraIdSignInEvents
+| where Timestamp > ago(30d) and AccountUpn =~ user
+| summarize FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            Successes = countif(ErrorCode == 0), Failures = countif(ErrorCode != 0),
+            Apps = make_set(Application, 10), UserAgents = make_set(UserAgent, 5),
+            Devices = make_set_if(DeviceName, isnotempty(DeviceName), 5),
+            Managed = make_set(IsManaged), Countries = make_set(Country)
+            by IPAddress
+| extend IsNewIP = FirstSeen > ago(recent)
+| sort by IsNewIP desc, FirstSeen desc

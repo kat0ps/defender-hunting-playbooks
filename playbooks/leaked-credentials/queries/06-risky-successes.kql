@@ -1,0 +1,17 @@
+// Step 6: successful sign-ins that a stolen password alone could produce
+// Red flags: singleFactorAuthentication, legacy ClientAppUsed (IMAP, POP, SMTP, Exchange ActiveSync, "Other clients"),
+// ConditionalAccessStatus = 2 (notApplied), unmanaged device, automation user agent (python, curl, axios, Go-http-client),
+// or a success from a new IP in step 4. Set `ips` to the suspicious IPs, or leave empty to see all single-factor/legacy successes
+let user = "user@domain.com";
+let ips = dynamic([]);
+EntraIdSignInEvents
+| where Timestamp > ago(30d) and AccountUpn =~ user
+| where ErrorCode == 0
+| where (array_length(ips) > 0 and IPAddress in (ips))
+     or AuthenticationRequirement == "singleFactorAuthentication"
+     or ClientAppUsed !in ("Browser", "Mobile Apps and Desktop clients", "")
+     or UserAgent has_any ("python", "curl", "axios", "Go-http-client", "okhttp", "PowerShell")
+| project Timestamp, IPAddress, Country, City, Application, ResourceDisplayName, LogonType,
+          AuthenticationRequirement, ClientAppUsed, ConditionalAccessStatus, RiskLevelDuringSignIn, RiskEventTypes,
+          DeviceName, AadDeviceId, IsManaged, IsCompliant, OSPlatform, Browser, UserAgent, SessionId
+| sort by Timestamp asc

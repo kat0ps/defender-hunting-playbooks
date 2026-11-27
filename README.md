@@ -14,6 +14,7 @@ Each playbook walks through an investigation from alert to verdict to containmen
 | [Impossible travel / account compromise](playbooks/impossible-travel/README.md) | Identity | An Atypical travel / Impossible travel alert fires, or you suspect a compromised Entra ID account | T1078.004, T1539, T1114.003 |
 | [AiTM phishing / token theft](playbooks/aitm-token-theft/README.md) | Identity | A phishing click is followed by a sign-in from a new IP, or an AiTM / stolen-cookie alert fires | T1557, T1539, T1550.004 |
 | [Activity from an anonymous proxy](playbooks/anonymous-proxy/README.md) | Identity | An *Activity from an anonymous proxy* or *Anonymous IP address* alert: VPN, Tor or proxy use on an account | T1090.002, T1090.003, T1078.004 |
+| [Leaked credentials (single user)](playbooks/leaked-credentials/README.md) | Identity | A *Leaked credentials* risk detection, or a report that one user's password is in a dump or stealer log | T1078.004, T1589.001, T1555.003 |
 | [Password spray / brute force](playbooks/password-spray/README.md) | Identity | Many failed sign-ins across users, lockout spikes, or a password spray alert | T1110.003, T1110.001 |
 | [User-reported email](playbooks/user-reported-email/README.md) | Email | An *Email reported by user as malware or phish* alert, or a Report-button submission | T1566.001, T1566.002, T1656 |
 | [Phishing email triage](playbooks/phishing-triage/README.md) | Email | A user-reported phish, malicious URL click, or post-delivery removal alert | T1566.001, T1566.002, T1204 |
@@ -27,7 +28,8 @@ User-reported email ──malicious──▶ Phishing triage
 Phishing triage ──clicked link──▶ AiTM / token theft ──▶ Impossible travel (scope the account)
        │                                                        ▲
        └──ran attachment──▶ Suspicious PowerShell               │
-Password spray ──successful sign-in────────────────────────────┘
+Password spray ──successful sign-in────────────────────────────┤
+Leaked credentials ──password used─────────────────────────────┘
 Business email compromise ◀──inbox rules / fraud emails── any compromised account
 ```
 
@@ -81,6 +83,7 @@ lab/                                # cloud detection engineering lab: Terraform
 
 ## Changelog
 
+- **2026-11-27**: Added leaked credentials playbook (single user): alert scope, user profile, password age, sign-in baseline, correct-password error codes, risky successes, persistence, mailbox abuse, infostealer leak source, blast radius.
 - **2026-11-23**: Phishing triage playbook: step 1 now splits out SPF/DKIM/DMARC/CompAuth and flags From vs MailFrom mismatches; step 2 adds `RiskFlags` for risky attachments and links; step 5 can check every attachment in an email by NetworkMessageId.
 - **2026-11-16**: Added anonymous proxy playbook (*Activity from an anonymous proxy*): alert scope, flagged activities, IP enrichment, user proxy history, sign-in details, session link, post-access actions, blast radius. Detection rule to follow.
 - **2026-11-10**: Added the cloud detection engineering lab (`lab/`): learning guide, build prompts, folder scaffold for Terraform, Sentinel rules, simulations, evidence and workflows.

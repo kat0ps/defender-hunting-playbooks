@@ -1,0 +1,14 @@
+// Step 10: blast radius - other accounts touched by the same attacker IPs
+// Leaks often come in batches (same breach or same stealer log). Many users from one IP = spray or
+// credential stuffing; switch to the password spray playbook
+let user = "user@domain.com";
+let ips = dynamic(["x.x.x.x"]);
+EntraIdSignInEvents
+| where Timestamp > ago(30d)
+| where IPAddress in (ips)
+| summarize Attempts = count(), Successes = countif(ErrorCode == 0),
+            PasswordCorrect = countif(ErrorCode in (0, 50074, 50076, 500121, 53003, 50055, 50144)),
+            FirstSeen = min(Timestamp), LastSeen = max(Timestamp), IPs = make_set(IPAddress)
+            by AccountUpn
+| extend IsAlertUser = AccountUpn =~ user
+| sort by PasswordCorrect desc, Attempts desc

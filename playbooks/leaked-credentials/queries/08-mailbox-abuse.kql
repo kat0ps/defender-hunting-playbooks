@@ -1,0 +1,18 @@
+// Step 8: mailbox and data abuse (inbox rules, forwarding, delegation, mail and file access)
+// Rules that move to RSS Feeds / Archive / Conversation History, delete, or forward externally are classic BEC.
+// MailItemsAccessed or FileDownloaded from an IP in `ips` means the attacker read data
+let user = "user@domain.com";
+let userId = toscalar(IdentityInfo | where AccountUpn =~ user | summarize arg_max(Timestamp, AccountObjectId) | project AccountObjectId);
+let ips = dynamic([]);
+CloudAppEvents
+| where Timestamp > ago(30d)
+| where AccountObjectId == userId or RawEventData has user
+| where ActionType in ("New-InboxRule", "Set-InboxRule", "UpdateInboxRules", "Set-Mailbox",
+        "Add-MailboxPermission", "Add-RecipientPermission", "New-TransportRule",
+        "MailItemsAccessed", "Send", "SoftDelete", "HardDelete",
+        "FileDownloaded", "FileSyncDownloadedFull", "AnonymousLinkCreated", "SharingInvitationCreated")
+| extend FromSuspiciousIP = IPAddress in (ips)
+| summarize Events = count(), FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            Sample = take_any(RawEventData)
+            by ActionType, IPAddress, FromSuspiciousIP, CountryCode, ISP
+| sort by FromSuspiciousIP desc, FirstSeen asc
