@@ -1,0 +1,22 @@
+// Step 8: compare the attachments of every version of the email
+// Same file name with a different SHA256 = the invoice was changed. Compare with the hash of the file the client
+// received (PowerShell: Get-FileHash .\invoice.pdf -Algorithm SHA256)
+let user = "user@domain.com";
+let clientDomain = "clientdomain.com";
+let sentTime = datetime(2026-11-25 09:00:00);
+let window = 2d;
+let messages = EmailEvents
+    | where Timestamp between ((sentTime - window) .. (sentTime + window))
+    | where SenderFromAddress =~ user and RecipientEmailAddress endswith clientDomain
+    | where AttachmentCount > 0
+    | project NetworkMessageId, Subject, InternetMessageId, SenderIPv4;
+let hashes = EmailAttachmentInfo
+    | where Timestamp between ((sentTime - window) .. (sentTime + window))
+    | join kind=inner messages on NetworkMessageId
+    | summarize FirstSeen = min(Timestamp), Versions = dcount(NetworkMessageId), Subjects = make_set(Subject, 5),
+                Messages = make_set(NetworkMessageId, 10), SenderIPs = make_set(SenderIPv4, 5)
+                by FileName, FileType, SHA256;
+hashes
+| join kind=inner (hashes | summarize HashesForThisFileName = dcount(SHA256) by FileName) on FileName
+| project-away FileName1
+| sort by FileName asc, FirstSeen asc

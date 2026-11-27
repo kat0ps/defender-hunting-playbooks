@@ -27,13 +27,44 @@
 | 5 | Executive impersonation | [05-display-name-impersonation.kql](queries/05-display-name-impersonation.kql) | External email using a VIP's display name |
 | 6 | Mailbox activity from new IPs | [06-mail-access-new-ip.kql](queries/06-mail-access-new-ip.kql) | Mail read, sent or deleted from IPs not in the user's 30-day baseline |
 
+### Delayed or altered payment email
+
+Use steps 7–10 when an invoice or payment email reached the client hours late, or the client paid a different amount or account than the one you sent.
+
+| # | Step | Query | What you're looking for |
+|---|---|---|---|
+| 7 | Trace the outbound email | [07-trace-outbound-payment-email.kql](queries/07-trace-outbound-payment-email.kql) | More than one version sent to the client, a version sent from a new IP or user agent, or a long gap (`SendToMailFlowMins`) between the mailbox Send and mail flow |
+| 8 | Compare attachment hashes | [08-attachment-hash-compare.kql](queries/08-attachment-hash-compare.kql) | The same file name with more than one SHA256 (`HashesForThisFileName > 1`), or a hash that doesn't match the file the client received |
+| 9 | Message tampering in the mailbox | [09-message-tampering.kql](queries/09-message-tampering.kql) | Drafts or sent items edited (`Update`), the original moved or deleted, Sent Items cleaned up, especially from an unfamiliar IP |
+| 10 | Lookalike domains in the thread | [10-thread-lookalike-domains.kql](queries/10-thread-lookalike-domains.kql) | Rows where `Side = OTHER`: a third domain replying in the thread, usually a lookalike of yours or the client's |
+
+**Ask the client for the email as they received it** (the .eml file or full headers) before you finish. The headers settle where the delay happened and whether the email came from you:
+
+| Header | What to check |
+|---|---|
+| `Received:` lines | Read bottom to top. The gap between two timestamps shows which hop held the email. |
+| `Message-ID` | Must match `InternetMessageId` from step 7. No match = not the email you sent. |
+| `From` / `Return-Path` / `Reply-To` | Must be your real domain. A lookalike or a different Reply-To = spoofed or hijacked thread. |
+| `Authentication-Results` | SPF, DKIM and DMARC should pass for your domain. |
+
 **Then:** for every compromised account, run the [impossible travel playbook](../impossible-travel/README.md) steps 2–5 to find how and when access was gained.
+
+## Triage at a glance: delayed or altered payment email
+
+| What you see | What it means | Action |
+|---|---|---|
+| One version in step 7, same Message-ID and hash as the client's copy, delay only in the client's `Received:` hops | Your side looks clean; the delay or change happened after delivery | Ask the client's IT to investigate their mailbox for rules and sign-ins |
+| Two versions in step 7, or a different SHA256 in step 8 | The email was re-sent with a changed attachment from your tenant | Treat the sender's account as compromised; run steps 1–6 and the impossible travel playbook |
+| Step 9 shows `Update` or a delete of the email from an unfamiliar IP | Attacker edited or hid the original in the user's mailbox | Contain the account now, then scope with step 6 |
+| The client's copy has a different Message-ID or From domain, and step 10 shows `Side = OTHER` | Lookalike domain hijacked the thread; your email may never have been altered | Block the domain, tell the client in writing and by phone, check how the attacker learned about the thread (either side could be compromised) |
 
 ## Common false positives
 
 - **Users' own organising rules** (moving newsletters, auto-filing supplier invoices). These usually have descriptive names and were created from known IPs and devices.
 - **Approved forwarding** to a personal assistant or a shared finance mailbox.
 - **Normal finance team email.** Step 3 will always flag the AP/AR team. Look for **unusual senders** or a sudden change in volume.
+- **Legitimate re-sends.** Users often re-send an invoice after correcting it. In step 7, a second version sent from the user's usual IP and device, followed by the user confirming the correction, is benign.
+- **Delays outside your tenant.** Greylisting, a slow client mail gateway or a client quarantine can hold mail for hours. The client's `Received:` headers show this as a gap after your outbound server.
 
 ## Verdict
 

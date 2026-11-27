@@ -1,0 +1,19 @@
+// Step 10: who else is talking in the payment thread
+// Replies in the thread from a domain that is neither yours nor the client's = the attacker may have hijacked the
+// conversation with a lookalike domain (rn/m, l/1, extra hyphen, .co vs .co.za). Check SenderMailFromDomain too.
+let myDomain = "domain.com";
+let clientDomain = "clientdomain.com";
+let threadWords = dynamic(["INV-1234", "invoice"]);    // invoice number or a distinctive word from the subject
+let sentTime = datetime(2026-11-25 09:00:00);
+let window = 14d;
+EmailEvents
+| where Timestamp between ((sentTime - window) .. (sentTime + window))
+| where Subject has_any (threadWords)
+| extend Side = case(SenderFromDomain =~ myDomain, "Us",
+                     SenderFromDomain =~ clientDomain, "Client",
+                     "OTHER")
+| summarize Emails = count(), First = min(Timestamp), Last = max(Timestamp),
+            Recipients = make_set(RecipientEmailAddress, 20), Subjects = make_set(Subject, 5),
+            Auth = make_set(AuthenticationDetails, 3)
+            by Side, SenderFromAddress, SenderFromDomain, SenderMailFromDomain, EmailDirection
+| sort by Side desc, First asc

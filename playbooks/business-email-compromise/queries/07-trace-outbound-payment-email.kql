@@ -1,0 +1,24 @@
+// Step 7: trace an invoice/payment email sent to a client, and every similar email sent around it
+// Two versions of the same email, a second one from a new IP, or a gap between the user's Send and the
+// EmailEvents timestamp = the email may have been held back, edited and re-sent
+let user = "user@domain.com";
+let clientDomain = "clientdomain.com";
+let sentTime = datetime(2026-11-25 09:00:00);    // when the user says they sent it (UTC)
+let window = 2d;
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+// When the mailbox recorded the Send, and from which IP
+let sends = CloudAppEvents
+    | where Timestamp between ((sentTime - window) .. (sentTime + window)) and AccountObjectId == userId
+    | where ActionType in ("Send", "SendAs", "SendOnBehalf")
+    | extend InternetMessageId = tostring(RawEventData.Item.InternetMessageId)
+    | project SendAuditTime = Timestamp, InternetMessageId, SendIP = IPAddress, SendCountry = CountryCode, SendUserAgent = UserAgent;
+EmailEvents
+| where Timestamp between ((sentTime - window) .. (sentTime + window))
+| where SenderFromAddress =~ user or SenderMailFromAddress =~ user
+| where RecipientEmailAddress endswith clientDomain
+| join kind=leftouter sends on InternetMessageId
+| extend SendToMailFlowMins = datetime_diff("minute", Timestamp, SendAuditTime)
+| project Timestamp, SendAuditTime, SendToMailFlowMins, SendIP, SendCountry, SendUserAgent,
+          SenderFromAddress, RecipientEmailAddress, Subject, SenderIPv4, AttachmentCount,
+          DeliveryAction, InternetMessageId, NetworkMessageId
+| sort by Timestamp asc
