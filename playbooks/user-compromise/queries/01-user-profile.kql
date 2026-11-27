@@ -1,0 +1,5 @@
+// Step 1: who is the user? Finance, executives, admins and anyone who approves payments raise the priority.
+let user = "user@domain.com";
+IdentityInfo
+| where AccountUpn =~ user
+| summarize arg_max(Timestamp, *) by AccountUpn

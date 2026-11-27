@@ -1,0 +1,21 @@
+// Step 4: how the attacker got in
+// Many "Bad password" then success = password spray or guessing. Repeated "MFA failed/denied" = MFA fatigue.
+// singleFactorAuthentication or legacy ClientAppUsed (IMAP, POP, SMTP, Exchange ActiveSync) = MFA bypass.
+// Success from a new IP with MFA satisfied and no prompt = token or cookie theft (AiTM): check step 5.
+let user = "user@domain.com";
+let suspectTime = datetime(2026-11-25 08:00:00);
+EntraIdSignInEvents
+| where AccountUpn =~ user
+| where Timestamp between ((suspectTime - 3d) .. (suspectTime + 1d))
+| extend Result = case(ErrorCode == 0, "Success",
+                       ErrorCode == 50126, "Bad password",
+                       ErrorCode in (50074, 50076), "MFA required",
+                       ErrorCode == 500121, "MFA failed/denied",
+                       ErrorCode == 50053, "Locked out",
+                       ErrorCode == 53003, "Blocked by CA",
+                       ErrorCode == 50140, "KMSI interrupt",
+                       strcat("Error ", ErrorCode))
+| project Timestamp, Result, IPAddress, Country, Application, ClientAppUsed, LogonType,
+          AuthenticationRequirement, ConditionalAccessStatus, RiskLevelDuringSignIn,
+          DeviceName, IsManaged, UserAgent, SessionId
+| sort by Timestamp asc

@@ -1,0 +1,13 @@
+// Step 10: email sent from the account
+// A burst to many recipients, finance or "shared document" subjects, or mail to people the user never emails
+// = internal phishing or BEC from the compromised account. Note recipients to warn.
+let user = "user@domain.com";
+let suspectTime = datetime(2026-11-25 08:00:00);
+EmailEvents
+| where Timestamp between ((suspectTime - 3d) .. (suspectTime + 7d))
+| where SenderFromAddress =~ user
+| summarize Emails = count(), Recipients = dcount(RecipientEmailAddress),
+            SampleRecipients = make_set(RecipientEmailAddress, 20), Directions = make_set(EmailDirection),
+            SenderIPs = make_set(SenderIPv4, 5), ThreatTypes = make_set(ThreatTypes, 5)
+            by bin(Timestamp, 1h), Subject
+| sort by Timestamp asc

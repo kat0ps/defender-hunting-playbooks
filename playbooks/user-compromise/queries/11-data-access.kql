@@ -1,0 +1,15 @@
+// Step 11: files the attacker downloaded or shared (SharePoint, OneDrive, Teams files)
+// Bulk downloads, anonymous links or external sharing from a badIP = data theft; scope what was taken.
+let user = "user@domain.com";
+let badIPs = dynamic(["x.x.x.x"]);
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp > ago(30d)
+| where AccountObjectId == userId or IPAddress in (badIPs)
+| where ActionType in ("FileDownloaded", "FileSyncDownloadedFull", "FileAccessed", "FileCopied",
+                       "AnonymousLinkCreated", "SharingInvitationCreated", "AddedToSecureLink",
+                       "CompanyLinkCreated", "SharingSet")
+| extend FromBadIP = IPAddress in (badIPs)
+| summarize Files = dcount(ObjectName), Actions = count(), Sample = make_set(ObjectName, 20)
+            by ActionType, FromBadIP, IPAddress, CountryCode, bin(Timestamp, 1h)
+| sort by FromBadIP desc, Timestamp asc

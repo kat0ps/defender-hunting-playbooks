@@ -1,0 +1,11 @@
+// Step 5: one session used from more than one place = stolen cookie or token
+// A hit means a password reset alone will NOT lock the attacker out: revoke sessions too.
+let user = "user@domain.com";
+EntraIdSignInEvents
+| where Timestamp > ago(14d) and AccountUpn =~ user and isnotempty(SessionId)
+| summarize IPs = make_set(IPAddress, 20), Countries = make_set(Country),
+            UserAgents = make_set(UserAgent, 5), Devices = make_set(DeviceName, 5),
+            First = min(Timestamp), Last = max(Timestamp)
+            by SessionId
+| where array_length(Countries) > 1 or array_length(IPs) > 2 or array_length(UserAgents) > 1
+| sort by First asc

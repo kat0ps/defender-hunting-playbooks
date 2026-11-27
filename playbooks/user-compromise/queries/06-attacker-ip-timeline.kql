@@ -1,0 +1,15 @@
+// Step 6: everything the suspicious IPs did, in one timeline (sign-ins + cloud app activity)
+// This is the attacker's story: first sign-in, what they changed, what they read and sent.
+let user = "user@domain.com";
+let badIPs = dynamic(["x.x.x.x"]);
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+union
+    (EntraIdSignInEvents
+     | where Timestamp > ago(30d) and IPAddress in (badIPs)
+     | project Timestamp, Source = "Sign-in", Account = AccountUpn, IPAddress, Country,
+               Action = strcat(Application, " | Error ", ErrorCode), Detail = UserAgent),
+    (CloudAppEvents
+     | where Timestamp > ago(30d) and IPAddress in (badIPs)
+     | project Timestamp, Source = Application, Account = coalesce(AccountDisplayName, AccountId), IPAddress,
+               Country = CountryCode, Action = ActionType, Detail = ObjectName)
+| sort by Timestamp asc

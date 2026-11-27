@@ -1,0 +1,9 @@
+// Step 13: other accounts signing in from the attacker's IPs
+// Any success from these IPs on another account = a second compromised user: run this playbook for them too.
+let badIPs = dynamic(["x.x.x.x"]);
+EntraIdSignInEvents
+| where Timestamp > ago(30d) and IPAddress in (badIPs)
+| summarize Users = make_set(AccountUpn, 50), UserCount = dcount(AccountUpn),
+            Successes = countif(ErrorCode == 0), Failures = countif(ErrorCode != 0)
+            by IPAddress, Country
+| sort by UserCount desc

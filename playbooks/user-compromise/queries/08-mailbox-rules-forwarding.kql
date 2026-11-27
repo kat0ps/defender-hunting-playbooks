@@ -1,0 +1,15 @@
+// Step 8: inbox rules, forwarding and mailbox permissions
+// Red flags in RawEventData: MoveToFolder RSS Feeds / Archive / Conversation History, DeleteMessage, MarkAsRead,
+// ForwardTo / RedirectTo / ForwardingSmtpAddress to an outside address, rule names like "." or "..",
+// and keywords such as invoice, payment, bank. For a full BEC investigation, go to the BEC playbook.
+let user = "user@domain.com";
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp > ago(30d)
+| where Application == "Microsoft Exchange Online"
+| where AccountObjectId == userId or RawEventData has user
+| where ActionType in ("New-InboxRule", "Set-InboxRule", "UpdateInboxRules", "Enable-InboxRule",
+                       "Set-Mailbox", "Add-MailboxPermission", "Add-RecipientPermission",
+                       "Set-MailboxFolderPermission", "Add-MailboxFolderPermission")
+| project Timestamp, ActionType, AccountDisplayName, IPAddress, CountryCode, ISP, UserAgent, RawEventData
+| sort by Timestamp asc

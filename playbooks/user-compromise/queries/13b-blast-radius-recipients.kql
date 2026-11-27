@@ -1,0 +1,12 @@
+// Step 13b: people who received mail from the compromised account after the suspected time, and who clicked
+// Clicked > 0 = that recipient may be compromised next. Warn external recipients (clients, suppliers) by phone.
+let user = "user@domain.com";
+let suspectTime = datetime(2026-11-25 08:00:00);
+EmailEvents
+| where Timestamp between (suspectTime .. (suspectTime + 7d))
+| where SenderFromAddress =~ user
+| join kind=leftouter (UrlClickEvents | where Timestamp > suspectTime
+                       | project NetworkMessageId, Clicker = AccountUpn, Url) on NetworkMessageId
+| summarize Emails = dcount(NetworkMessageId), Clicked = countif(isnotempty(Clicker)), Subjects = make_set(Subject, 5)
+            by RecipientEmailAddress, EmailDirection
+| sort by Clicked desc, Emails desc
