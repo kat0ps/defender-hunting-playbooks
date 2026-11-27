@@ -1,0 +1,21 @@
+// Step 12: how it started. Phishing emails and link clicks before the first suspicious sign-in.
+// A click a few minutes before a sign-in from a new IP is the classic AiTM pattern: go to the AiTM playbook.
+// No click? Look at step 4 for spray or leaked credentials, and check the user's devices for infostealer alerts (step 1).
+let user = "user@domain.com";
+let myDomain = "domain.com";
+let suspectTime = datetime(2026-11-25 08:00:00);
+let lookback = 7d;
+union
+    (UrlClickEvents
+     | where Timestamp between ((suspectTime - lookback) .. (suspectTime + 1d)) and AccountUpn =~ user
+     | project Timestamp, Source = "Link click", Detail = Url, Action = ActionType,
+               Threat = tostring(ThreatTypes), IsClickedThrough, NetworkMessageId),
+    (EmailEvents
+     | where Timestamp between ((suspectTime - lookback) .. (suspectTime + 1d)) and RecipientEmailAddress =~ user
+     | where isnotempty(ThreatTypes)
+         or (EmailDirection == "Inbound" and SenderFromDomain !endswith myDomain
+             and Subject has_any ("sign", "document", "shared", "voicemail", "invoice", "password", "verify", "DocuSign"))
+     | project Timestamp, Source = "Email received", Detail = strcat(SenderFromAddress, " | ", Subject),
+               Action = strcat(DeliveryAction, " → ", LatestDeliveryLocation), Threat = ThreatTypes,
+               IsClickedThrough = bool(null), NetworkMessageId)
+| sort by Timestamp asc

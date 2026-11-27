@@ -11,6 +11,7 @@ Each playbook walks through an investigation from alert to verdict to containmen
 
 | Playbook | Area | Use when | MITRE ATT&CK |
 |---|---|---|---|
+| [User compromise (account takeover)](playbooks/user-compromise/README.md) | Identity | A risky user, a suspicious sign-in, or a report of MFA prompts or emails the user didn't send, when you don't yet know how the account was taken | T1078.004, T1110, T1621, T1539, T1098.005, T1114.003, T1534, T1530 |
 | [Impossible travel / account compromise](playbooks/impossible-travel/README.md) | Identity | An Atypical travel / Impossible travel alert fires, or you suspect a compromised Entra ID account | T1078.004, T1539, T1114.003 |
 | [AiTM phishing / token theft](playbooks/aitm-token-theft/README.md) | Identity | A phishing click is followed by a sign-in from a new IP, or an AiTM / stolen-cookie alert fires | T1557, T1539, T1550.004 |
 | [Activity from an anonymous proxy](playbooks/anonymous-proxy/README.md) | Identity | An *Activity from an anonymous proxy* or *Anonymous IP address* alert: VPN, Tor or proxy use on an account | T1090.002, T1090.003, T1078.004 |
@@ -31,6 +32,7 @@ Phishing triage ──clicked link──▶ AiTM / token theft ──▶ Impossi
 Password spray ──successful sign-in────────────────────────────┤
 Leaked credentials ──password used─────────────────────────────┘
 Business email compromise ◀──inbox rules / fraud emails── any compromised account
+User compromise ──routes to──▶ AiTM · Password spray · Leaked credentials · BEC (once the entry point is known)
 ```
 
 ## Cloud detection engineering lab
@@ -83,6 +85,7 @@ lab/                                # cloud detection engineering lab: Terraform
 
 ## Changelog
 
+- **2026-11-27**: Added user compromise playbook (account takeover, any trigger): user profile and alerts, risky sign-ins, sign-in baseline, auth timeline, token replay, attacker IP timeline, persistence, mailbox rules and activity, outbound email, data access, initial access, blast radius by IP and by recipient.
 - **2026-11-27**: Business email compromise playbook: added steps 7–10 for a delayed or altered payment email (outbound trace with send-to-mail-flow delay, attachment hash comparison, message tampering in the mailbox, lookalike domains in the thread), a header-checking table, and a triage table.
 - **2026-11-27**: Added leaked credentials playbook (single user): alert scope, user profile, password age, sign-in baseline, correct-password error codes, risky successes, persistence, mailbox abuse, infostealer leak source, blast radius.
 - **2026-11-23**: Phishing triage playbook: step 1 now splits out SPF/DKIM/DMARC/CompAuth and flags From vs MailFrom mismatches; step 2 adds `RiskFlags` for risky attachments and links; step 5 can check every attachment in an email by NetworkMessageId.

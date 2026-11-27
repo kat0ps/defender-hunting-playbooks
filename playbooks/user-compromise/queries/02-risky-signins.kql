@@ -1,0 +1,10 @@
+// Step 2: Entra ID Protection risk on the user's sign-ins
+// RiskEventTypes names the detection (unfamiliarFeatures, anonymizedIPAddress, leakedCredentials, tokenIssuerAnomaly,
+// attackerinTheMiddle...). RiskState = atRisk or confirmedCompromised on a successful sign-in needs action.
+let user = "user@domain.com";
+EntraIdSignInEvents
+| where Timestamp > ago(30d) and AccountUpn =~ user
+| where RiskLevelDuringSignIn > 0 or RiskLevelAggregated > 0 or isnotempty(RiskEventTypes)
+| project Timestamp, ErrorCode, RiskLevelDuringSignIn, RiskLevelAggregated, RiskState, RiskEventTypes,
+          IPAddress, Country, City, Application, ClientAppUsed, DeviceName, IsManaged, UserAgent, SessionId
+| sort by Timestamp asc

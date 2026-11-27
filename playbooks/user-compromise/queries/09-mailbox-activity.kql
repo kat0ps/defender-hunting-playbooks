@@ -1,0 +1,14 @@
+// Step 9: mail the attacker read, sent, moved or deleted
+// MailItemsAccessed from a badIP = the attacker read mail (needs Audit Premium). Deletes in Sent Items = covering tracks.
+let user = "user@domain.com";
+let badIPs = dynamic(["x.x.x.x"]);
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp > ago(30d) and AccountObjectId == userId
+| where Application == "Microsoft Exchange Online"
+| where ActionType in ("MailItemsAccessed", "Send", "SendAs", "SendOnBehalf", "Update", "Move",
+                       "MoveToDeletedItems", "SoftDelete", "HardDelete", "SearchQueryInitiatedExchange")
+| extend FromBadIP = IPAddress in (badIPs)
+| summarize Events = count(), First = min(Timestamp), Last = max(Timestamp)
+            by ActionType, FromBadIP, IPAddress, CountryCode, ISP, UserAgent
+| sort by FromBadIP desc, First asc

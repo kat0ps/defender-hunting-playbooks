@@ -1,0 +1,14 @@
+// Step 7: what the attacker set up to keep access
+// New MFA method or phone, new registered device, OAuth app consent, password change, or a role added.
+// Changes from a badIP, or minutes after the suspicious sign-in, are attacker persistence until proven otherwise.
+let user = "user@domain.com";
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+CloudAppEvents
+| where Timestamp > ago(30d)
+| where AccountObjectId == userId or RawEventData has user
+| where ActionType has_any ("security info", "StrongAuthentication", "Register device", "Add device",
+        "registered owner", "registered user", "Consent to application", "Add app role assignment",
+        "Add delegated permission grant", "Add service principal", "Change user password",
+        "Reset user password", "Update user", "Add member to role", "Add owner")
+| project Timestamp, ActionType, Application, AccountDisplayName, IPAddress, CountryCode, ISP, UserAgent, RawEventData
+| sort by Timestamp asc

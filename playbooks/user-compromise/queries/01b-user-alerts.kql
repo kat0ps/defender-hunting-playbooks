@@ -1,0 +1,12 @@
+// Step 1b: every alert that names the user in the last 30 days
+// Earlier alerts (a phishing click, an infostealer on their device, a risky sign-in) often show where it started.
+let user = "user@domain.com";
+let userId = toscalar(EntraIdSignInEvents | where AccountUpn =~ user | take 1 | project AccountObjectId);
+AlertEvidence
+| where Timestamp > ago(30d)
+| where AccountUpn =~ user or AccountObjectId == userId
+| join kind=inner (AlertInfo | project AlertId, Title, Severity, Category, ServiceSource) on AlertId
+| summarize FirstSeen = min(Timestamp), LastSeen = max(Timestamp), IPs = make_set(RemoteIP, 10),
+            Devices = make_set(DeviceName, 5)
+            by AlertId, Title, Severity, Category, ServiceSource
+| sort by FirstSeen asc

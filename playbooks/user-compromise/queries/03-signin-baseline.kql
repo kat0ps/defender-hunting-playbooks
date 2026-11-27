@@ -1,0 +1,14 @@
+// Step 3: the user's normal sign-in pattern vs anything new around the suspected time
+// NewNearSuspect = true on a successful sign-in from a new country, ISP, device or user agent is the main lead.
+// Note every suspicious IP: they become badIPs for steps 6, 9 and 12.
+let user = "user@domain.com";
+let suspectTime = datetime(2026-11-25 08:00:00);    // UTC: alert time, or when the user noticed something
+EntraIdSignInEvents
+| where Timestamp > ago(30d) and AccountUpn =~ user
+| summarize FirstSeen = min(Timestamp), LastSeen = max(Timestamp),
+            Successes = countif(ErrorCode == 0), Failures = countif(ErrorCode != 0),
+            Apps = make_set(Application, 10), Devices = make_set(DeviceName, 5),
+            UserAgents = make_set(UserAgent, 5), Managed = make_set(IsManaged)
+            by IPAddress, Country, City
+| extend NewNearSuspect = FirstSeen between ((suspectTime - 3d) .. (suspectTime + 1d))
+| sort by NewNearSuspect desc, FirstSeen desc
